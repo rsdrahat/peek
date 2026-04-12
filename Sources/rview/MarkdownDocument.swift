@@ -1,6 +1,5 @@
 import Foundation
 import Combine
-import Ink
 
 @MainActor
 final class MarkdownDocument: ObservableObject {
@@ -9,7 +8,7 @@ final class MarkdownDocument: ObservableObject {
 
     private var currentURL: URL?
     private var watcher: FileWatcher?
-    private let parser = MarkdownParser()
+    private let renderer = Renderer()
 
     func open(url: URL) {
         currentURL = url
@@ -26,7 +25,7 @@ final class MarkdownDocument: ObservableObject {
         guard let url = currentURL else { return }
         do {
             let source = try String(contentsOf: url, encoding: .utf8)
-            html = parser.html(from: source)
+            html = renderer.html(from: source)
         } catch {
             html = "<pre>Failed to read \(url.path): \(error.localizedDescription)</pre>"
         }

@@ -1,11 +1,11 @@
 import XCTest
-import Ink
+@testable import rview
 
 /// Fixture-driven renderer tests. Each `Fixtures/*.md` has a sibling
 /// `*.expected.html`. Set `RVIEW_UPDATE_FIXTURES=1` to regenerate expected files.
 final class RendererTests: XCTestCase {
     func testAllFixtures() throws {
-        let parser = MarkdownParser()
+        let renderer = Renderer()
         let fixturesDir = Self.fixturesDirectory()
         let mdFiles = try FileManager.default
             .contentsOfDirectory(at: fixturesDir, includingPropertiesForKeys: nil)
@@ -19,7 +19,7 @@ final class RendererTests: XCTestCase {
 
         for md in mdFiles {
             let source = try String(contentsOf: md, encoding: .utf8)
-            let actual = parser.html(from: source).trimmingCharacters(in: .whitespacesAndNewlines)
+            let actual = renderer.html(from: source).trimmingCharacters(in: .whitespacesAndNewlines)
             let expectedURL = md.deletingPathExtension().appendingPathExtension("expected.html")
 
             if update || !FileManager.default.fileExists(atPath: expectedURL.path) {
