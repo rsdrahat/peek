@@ -1,22 +1,36 @@
 import Foundation
 import Markdown
 
+struct TOCEntry: Identifiable, Equatable {
+    let id: String      // slug, also the HTML id
+    let level: Int
+    let text: String
+}
+
+struct RenderResult: Equatable {
+    var html: String
+    var toc: [TOCEntry]
+}
+
 /// Converts markdown text to HTML using swift-markdown (cmark-gfm).
 ///
-/// swift-markdown parses but does not emit HTML; this walker produces the
-/// subset of tags our stylesheets target. Covers GFM: tables, task lists,
-/// strikethrough, autolinks, fenced code with language class.
+/// Emits only the HTML subset our stylesheets target. Also collects a
+/// flat Table of Contents from the document's headings.
 struct Renderer {
-    func html(from source: String) -> String {
+    func render(_ source: String) -> RenderResult {
         let doc = Document(parsing: source, options: [.parseBlockDirectives])
         var emitter = HTMLEmitter()
         emitter.visit(doc)
-        return emitter.output
+        return RenderResult(html: emitter.output, toc: emitter.toc)
     }
+
+    func html(from source: String) -> String { render(source).html }
 }
 
 private struct HTMLEmitter: MarkupWalker {
     var output: String = ""
+    var toc: [TOCEntry] = []
+    private var usedSlugs: [String: Int] = [:]
 
     mutating func defaultVisit(_ markup: Markup) {
         for child in markup.children { visit(child) }
@@ -29,7 +43,10 @@ private struct HTMLEmitter: MarkupWalker {
     }
 
     mutating func visitHeading(_ h: Heading) {
-        output += "<h\(h.level)>"
+        let text = h.plainText
+        let slug = makeSlug(text)
+        toc.append(TOCEntry(id: slug, level: h.level, text: text))
+        output += "<h\(h.level) id=\"\(Self.escape(slug))\">"
         for child in h.children { visit(child) }
         output += "</h\(h.level)>"
     }
@@ -86,7 +103,6 @@ private struct HTMLEmitter: MarkupWalker {
             let checked = done == .checked ? " checked" : ""
             output += "<input type=\"checkbox\" disabled\(checked)> "
         }
-        // Tighten single-paragraph list items so they don't render as block.
         let blocks = Array(item.children)
         if blocks.count == 1, let p = blocks[0] as? Paragraph {
             for child in p.children { visit(child) }
@@ -175,6 +191,30 @@ private struct HTMLEmitter: MarkupWalker {
     }
 
     // MARK: - Helpers
+
+    mutating func makeSlug(_ text: String) -> String {
+        let base = Self.slugify(text)
+        let count = usedSlugs[base, default: 0]
+        usedSlugs[base] = count + 1
+        return count == 0 ? base : "\(base)-\(count)"
+    }
+
+    private static func slugify(_ text: String) -> String {
+        let lower = text.lowercased()
+        var out = ""
+        var lastDash = false
+        for scalar in lower.unicodeScalars {
+            if CharacterSet.alphanumerics.contains(scalar) {
+                out.append(Character(scalar))
+                lastDash = false
+            } else if !lastDash && !out.isEmpty {
+                out.append("-")
+                lastDash = true
+            }
+        }
+        while out.hasSuffix("-") { out.removeLast() }
+        return out.isEmpty ? "section" : out
+    }
 
     private static func alignAttribute(_ aligns: [Table.ColumnAlignment?], _ idx: Int) -> String {
         guard idx < aligns.count, let a = aligns[idx] else { return "" }

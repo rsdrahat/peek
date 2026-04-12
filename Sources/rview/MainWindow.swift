@@ -12,8 +12,23 @@ struct MainWindow: View {
     @State private var findRequest = FindRequest(query: "", backwards: false, nonce: 0)
     @State private var zoom: Double = Pref.zoom
     @State private var webView: WKWebView?
+    @State private var tocVisible = false
 
     var body: some View {
+        HStack(spacing: 0) {
+            if tocVisible {
+                TOCSidebar(entries: document.toc) { entry in
+                    scrollToAnchor(entry.id)
+                }
+                .transition(.move(edge: .leading))
+                Divider()
+            }
+            content
+        }
+        .animation(.easeInOut(duration: 0.15), value: tocVisible)
+    }
+
+    private var content: some View {
         ZStack(alignment: .top) {
             MarkdownWebView(
                 html: document.html,
@@ -79,6 +94,9 @@ struct MainWindow: View {
                 PrintExport.exportPDF(webView: webView, suggestedName: "\(stem).pdf")
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .rviewToggleTOC)) { _ in
+            tocVisible.toggle()
+        }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             guard let provider = providers.first else { return false }
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
@@ -90,6 +108,17 @@ struct MainWindow: View {
 
     private var effectiveTheme: ColorScheme {
         themeOverride ?? systemScheme
+    }
+
+    private func scrollToAnchor(_ id: String) {
+        let escaped = id.replacingOccurrences(of: "'", with: "\\'")
+        let js = """
+        (function(){
+          var el = document.getElementById('\(escaped)');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        })();
+        """
+        webView?.evaluateJavaScript(js, completionHandler: nil)
     }
 
     private func setZoom(_ value: Double) {
