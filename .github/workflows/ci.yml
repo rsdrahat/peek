@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: macos-14
+    timeout-minutes: 15
+    env:
+      CI: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/Library/Developer/Xcode/DerivedData
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved', 'Package.swift') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Build (release)
+        run: swift build -c release
+
+      - name: Test
+        run: swift test --parallel
+
+      - name: Binary size budget (≤ 10 MB)
+        run: |
+          bin=$(swift build -c release --show-bin-path)/rview
+          bytes=$(stat -f%z "$bin")
+          mb=$(awk "BEGIN { printf \"%.2f\", $bytes / 1024 / 1024 }")
+          echo "Binary size: ${mb} MB (${bytes} bytes)"
+          echo "binary-size-mb=${mb}" >> "$GITHUB_STEP_SUMMARY"
+          limit=$((10 * 1024 * 1024))
+          if [ "$bytes" -gt "$limit" ]; then
+            echo "::error::Binary exceeded 10 MB budget: ${mb} MB"
+            exit 1
+          fi
+
+      - name: Bundle size budget (binary + resources ≤ 15 MB)
+        run: |
+          build_dir=$(swift build -c release --show-bin-path)
+          bytes=$(du -sk "$build_dir/rview" "$build_dir"/*.bundle 2>/dev/null | awk '{sum+=$1} END {print sum*1024}')
+          mb=$(awk "BEGIN { printf \"%.2f\", $bytes / 1024 / 1024 }")
+          echo "Bundle (binary + resources): ${mb} MB"
+          echo "bundle-size-mb=${mb}" >> "$GITHUB_STEP_SUMMARY"
+          limit=$((15 * 1024 * 1024))
+          if [ "$bytes" -gt "$limit" ]; then
+            echo "::error::Bundle exceeded 15 MB budget: ${mb} MB"
+            exit 1
+          fi
