@@ -36,6 +36,18 @@ open -a rview README.md    # via Finder
 | ⌘⇧D | Toggle dark/light |
 | ⌃⌘F | Toggle fullscreen (system default) |
 
+## Develop
+
+```bash
+make build            # swift build -c release
+make test             # run the test suite
+make test-update      # regenerate fixture .expected.html after intentional changes
+make test-coverage    # coverage report (release)
+make app              # produce .build/rview.app
+```
+
+Fixtures live in `Tests/rviewTests/Fixtures/`. When markdown rendering changes intentionally, run `make test-update` and commit the new `.expected.html` files alongside the source change.
+
 ## Status
 
 Pre-alpha. See [ROADMAP](https://github.com/rsdrahat/rview/issues).
