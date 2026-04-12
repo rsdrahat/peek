@@ -36,8 +36,9 @@ struct MarkdownWebView: NSViewRepresentable {
     static func shell(body: String, theme: ColorScheme) -> String {
         let themeAttr = theme == .dark ? "dark" : "light"
         let cssName = theme == .dark ? "dark.css" : "light.css"
-        let cssURL = Bundle.module.url(forResource: "Resources/\(cssName)", withExtension: nil)
-        let css = (cssURL.flatMap { try? String(contentsOf: $0) }) ?? ""
+        let hljsCSSName = theme == .dark ? "hljs-dark.css" : "hljs-light.css"
+        let css = loadResource(cssName) + "\n" + loadResource(hljsCSSName)
+        let hljs = loadResource("highlight.min.js")
         return """
         <!doctype html>
         <html data-theme="\(themeAttr)">
@@ -46,8 +47,16 @@ struct MarkdownWebView: NSViewRepresentable {
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <style>\(css)</style>
         </head>
-        <body><main class="page">\(body)</main></body>
+        <body><main class="page">\(body)</main>
+        <script>\(hljs)</script>
+        <script>hljs.highlightAll();</script>
+        </body>
         </html>
         """
+    }
+
+    private static func loadResource(_ name: String) -> String {
+        let url = Bundle.module.url(forResource: "Resources/\(name)", withExtension: nil)
+        return (url.flatMap { try? String(contentsOf: $0) }) ?? ""
     }
 }

@@ -25,6 +25,12 @@ final class ShellSnapshotTests: XCTestCase {
         XCTAssertTrue(html.contains(body))
     }
 
+    func testShellLoadsSyntaxHighlighting() {
+        let html = MarkdownWebView.shell(body: "x", theme: .light)
+        XCTAssertTrue(html.contains("hljs.highlightAll()"),
+                      "highlight.js init script missing from shell")
+    }
+
     func testLightAndDarkDifferOnlyByTheme() {
         let light = MarkdownWebView.shell(body: "x", theme: .light)
         let dark = MarkdownWebView.shell(body: "x", theme: .dark)
