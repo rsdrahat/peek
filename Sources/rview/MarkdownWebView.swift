@@ -5,6 +5,7 @@ struct MarkdownWebView: NSViewRepresentable {
     let html: String
     let theme: ColorScheme
     var findRequest: FindRequest = FindRequest(query: "", backwards: false, nonce: 0)
+    var zoom: Double = 1.0
     var onFindResult: (Bool) -> Void = { _ in }
 
     func makeNSView(context: Context) -> WKWebView {
@@ -21,6 +22,11 @@ struct MarkdownWebView: NSViewRepresentable {
         let coord = context.coordinator
         let bodyChanged = coord.lastBody != html
         let themeChanged = coord.lastTheme != theme
+
+        if coord.lastZoom != zoom {
+            view.pageZoom = CGFloat(zoom)
+            coord.lastZoom = zoom
+        }
 
         if bodyChanged || coord.lastBody == nil {
             view.loadHTMLString(Self.shell(body: html, theme: theme),
@@ -63,6 +69,7 @@ struct MarkdownWebView: NSViewRepresentable {
         var lastBody: String?
         var lastTheme: ColorScheme?
         var lastFindNonce: UInt64 = 0
+        var lastZoom: Double = -1
 
         func webView(_ webView: WKWebView,
                      decidePolicyFor nav: WKNavigationAction,

@@ -9,6 +9,7 @@ struct MainWindow: View {
     @State private var findQuery = ""
     @State private var findLastResult = true
     @State private var findRequest = FindRequest(query: "", backwards: false, nonce: 0)
+    @State private var zoom: Double = Pref.zoom
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -16,6 +17,7 @@ struct MainWindow: View {
                 html: document.html,
                 theme: effectiveTheme,
                 findRequest: findRequest,
+                zoom: zoom,
                 onFindResult: { ok in findLastResult = ok }
             )
             .ignoresSafeArea()
@@ -52,6 +54,15 @@ struct MainWindow: View {
         .onReceive(NotificationCenter.default.publisher(for: .rviewFindOpen)) { _ in
             findVisible = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: .rviewZoomIn)) { _ in
+            setZoom(zoom + Pref.zoomStep)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .rviewZoomOut)) { _ in
+            setZoom(zoom - Pref.zoomStep)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .rviewZoomReset)) { _ in
+            setZoom(Pref.defaultZoom)
+        }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             guard let provider = providers.first else { return false }
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
@@ -63,6 +74,12 @@ struct MainWindow: View {
 
     private var effectiveTheme: ColorScheme {
         themeOverride ?? systemScheme
+    }
+
+    private func setZoom(_ value: Double) {
+        let clamped = min(max(value, Pref.zoomMin), Pref.zoomMax)
+        zoom = clamped
+        Pref.zoom = clamped
     }
 
     private func issueFind(backwards: Bool) {

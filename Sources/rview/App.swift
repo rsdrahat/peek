@@ -27,6 +27,14 @@ struct RviewApp: App {
                 Button("Find…") { NotificationCenter.default.post(name: .rviewFindOpen, object: nil) }
                     .keyboardShortcut("f", modifiers: .command)
             }
+            CommandGroup(after: .toolbar) {
+                Button("Zoom In") { NotificationCenter.default.post(name: .rviewZoomIn, object: nil) }
+                    .keyboardShortcut("=", modifiers: .command)
+                Button("Zoom Out") { NotificationCenter.default.post(name: .rviewZoomOut, object: nil) }
+                    .keyboardShortcut("-", modifiers: .command)
+                Button("Actual Size") { NotificationCenter.default.post(name: .rviewZoomReset, object: nil) }
+                    .keyboardShortcut("0", modifiers: .command)
+            }
         }
     }
 }
@@ -36,4 +44,7 @@ extension Notification.Name {
     static let rviewToggleTheme = Notification.Name("rview.toggleTheme")
     static let rviewOpenFile = Notification.Name("rview.openFile")
     static let rviewFindOpen = Notification.Name("rview.findOpen")
+    static let rviewZoomIn = Notification.Name("rview.zoomIn")
+    static let rviewZoomOut = Notification.Name("rview.zoomOut")
+    static let rviewZoomReset = Notification.Name("rview.zoomReset")
 }
