@@ -112,6 +112,34 @@ input[type="checkbox"] { accent-color: var(--accent); margin-right: 0.4em; }
 
 ::selection { background: var(--selection); }
 
+.rview-error {
+  text-align: center;
+  padding: 4em 1em;
+  color: var(--muted);
+}
+.rview-error h1 {
+  font-family: var(--sans);
+  font-weight: 500;
+  color: var(--fg);
+  margin-top: 0;
+}
+.rview-error-path code {
+  font-size: 0.85em;
+  word-break: break-all;
+}
+.rview-error-hint {
+  margin-top: 2em;
+  font-size: 0.9em;
+}
+.rview-error kbd {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  background: var(--code-bg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.05em 0.4em;
+}
+
 /* hljs theme override: gate by data-theme so we can ship both. */
 :root[data-theme="light"] .hljs-wrapper-light { display: block; }
 :root[data-theme="light"] .hljs-wrapper-dark { display: none; }
