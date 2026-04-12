@@ -5,7 +5,7 @@ BUILD_DIR     := .build
 APP_BUNDLE    := $(BUILD_DIR)/$(APP_NAME).app
 BIN_PATH      := $(BUILD_DIR)/$(CONFIG)/$(APP_NAME)
 
-.PHONY: all build run app clean test fmt
+.PHONY: all build run app clean test test-update test-coverage fmt
 
 all: app
 
@@ -14,6 +14,18 @@ build:
 
 test:
 	swift test
+
+# Regenerate fixture .expected.html files when output changes intentionally.
+test-update:
+	RVIEW_UPDATE_FIXTURES=1 swift test || true
+	@echo "Fixtures regenerated. Re-run 'make test' to verify."
+
+test-coverage:
+	swift test --enable-code-coverage
+	@xcrun llvm-cov report \
+		$$(swift build --show-bin-path)/rviewPackageTests.xctest/Contents/MacOS/rviewPackageTests \
+		-instr-profile=$$(swift build --show-bin-path)/codecov/default.profdata \
+		-ignore-filename-regex='.build|Tests' || true
 
 run: build
 	$(BIN_PATH) $(FILE)
