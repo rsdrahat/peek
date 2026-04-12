@@ -8,6 +8,7 @@ struct MarkdownWebView: NSViewRepresentable {
     var zoom: Double = 1.0
     var baseURL: URL? = nil
     var onFindResult: (Bool) -> Void = { _ in }
+    var onWebViewReady: (WKWebView) -> Void = { _ in }
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -16,6 +17,7 @@ struct MarkdownWebView: NSViewRepresentable {
         view.setValue(false, forKey: "drawsBackground")
         view.navigationDelegate = context.coordinator
         context.coordinator.webView = view
+        onWebViewReady(view)
         return view
     }
 

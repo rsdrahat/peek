@@ -17,6 +17,14 @@ struct RviewApp: App {
                 Button("Open…") { appDelegate.openPanel() }
                     .keyboardShortcut("o", modifiers: .command)
             }
+            CommandGroup(after: .saveItem) {
+                Button("Export as PDF…") { NotificationCenter.default.post(name: .rviewExportPDF, object: nil) }
+                    .keyboardShortcut("e", modifiers: [.command, .shift])
+            }
+            CommandGroup(replacing: .printItem) {
+                Button("Print…") { NotificationCenter.default.post(name: .rviewPrint, object: nil) }
+                    .keyboardShortcut("p", modifiers: .command)
+            }
             CommandGroup(after: .toolbar) {
                 Button("Reload") { NotificationCenter.default.post(name: .rviewReload, object: nil) }
                     .keyboardShortcut("r", modifiers: .command)
@@ -47,4 +55,6 @@ extension Notification.Name {
     static let rviewZoomIn = Notification.Name("rview.zoomIn")
     static let rviewZoomOut = Notification.Name("rview.zoomOut")
     static let rviewZoomReset = Notification.Name("rview.zoomReset")
+    static let rviewPrint = Notification.Name("rview.print")
+    static let rviewExportPDF = Notification.Name("rview.exportPDF")
 }
