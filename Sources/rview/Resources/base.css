@@ -1,4 +1,22 @@
 :root {
+  --serif: "New York", "Iowan Old Style", "Charter", Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --mono: "SF Mono", "JetBrains Mono", "Menlo", monospace;
+}
+
+:root[data-theme="light"] {
+  --bg: #fdfdfc;
+  --fg: #1c1b1a;
+  --muted: #6b6762;
+  --accent: #2f6feb;
+  --rule: #e8e6e2;
+  --code-bg: #f4f2ee;
+  --code-fg: #1c1b1a;
+  --quote-bar: #d8d5cf;
+  --selection: rgba(47, 111, 235, 0.22);
+}
+
+:root[data-theme="dark"] {
   --bg: #16161a;
   --fg: #e6e4e0;
   --muted: #8b8680;
@@ -7,9 +25,7 @@
   --code-bg: #1e1e24;
   --code-fg: #e6e4e0;
   --quote-bar: #3a3a42;
-  --serif: "New York", "Iowan Old Style", "Charter", Georgia, serif;
-  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  --mono: "SF Mono", "JetBrains Mono", "Menlo", monospace;
+  --selection: rgba(127, 166, 255, 0.25);
 }
 
 html, body {
@@ -20,6 +36,7 @@ html, body {
   font: 16px/1.65 var(--serif);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  transition: background-color 140ms ease, color 140ms ease;
 }
 
 .page {
@@ -45,15 +62,8 @@ p { margin: 0.9em 0; }
 a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
 a:hover { border-bottom-color: var(--accent); }
 
-code, pre {
-  font-family: var(--mono);
-  font-size: 0.92em;
-}
-code {
-  background: var(--code-bg);
-  padding: 0.12em 0.38em;
-  border-radius: 4px;
-}
+code, pre { font-family: var(--mono); font-size: 0.92em; }
+code { background: var(--code-bg); padding: 0.12em 0.38em; border-radius: 4px; }
 pre {
   background: var(--code-bg);
   padding: 0;
@@ -100,4 +110,10 @@ li { margin: 0.25em 0; }
 
 input[type="checkbox"] { accent-color: var(--accent); margin-right: 0.4em; }
 
-::selection { background: rgba(127, 166, 255, 0.25); }
+::selection { background: var(--selection); }
+
+/* hljs theme override: gate by data-theme so we can ship both. */
+:root[data-theme="light"] .hljs-wrapper-light { display: block; }
+:root[data-theme="light"] .hljs-wrapper-dark { display: none; }
+:root[data-theme="dark"] .hljs-wrapper-light { display: none; }
+:root[data-theme="dark"] .hljs-wrapper-dark { display: block; }
