@@ -9,8 +9,10 @@ struct RviewApp: App {
         WindowGroup {
             MainWindow()
                 .frame(minWidth: 480, minHeight: 360)
+                .background(WindowAutosaveAccessor(name: "rview.main"))
         }
         .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 800, height: 1000)
         .windowResizability(.contentSize)
         .commands {
             CommandGroup(replacing: .newItem) {

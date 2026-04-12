@@ -7,12 +7,17 @@ struct MarkdownWebView: NSViewRepresentable {
     var findRequest: FindRequest = FindRequest(query: "", backwards: false, nonce: 0)
     var zoom: Double = 1.0
     var baseURL: URL? = nil
+    var fileURL: URL? = nil
     var onFindResult: (Bool) -> Void = { _ in }
     var onWebViewReady: (WKWebView) -> Void = { _ in }
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.allowsContentJavaScript = true
+        let userContent = WKUserContentController()
+        userContent.add(context.coordinator, name: "rviewScroll")
+        config.userContentController = userContent
+
         let view = WKWebView(frame: .zero, configuration: config)
         view.setValue(false, forKey: "drawsBackground")
         view.navigationDelegate = context.coordinator
@@ -25,21 +30,21 @@ struct MarkdownWebView: NSViewRepresentable {
         let coord = context.coordinator
         let bodyChanged = coord.lastBody != html
         let themeChanged = coord.lastTheme != theme
+        let baseChanged = coord.lastBaseURL != baseURL
+        let fileChanged = coord.lastFileURL != fileURL
 
         if coord.lastZoom != zoom {
             view.pageZoom = CGFloat(zoom)
             coord.lastZoom = zoom
         }
 
-        let baseChanged = coord.lastBaseURL != baseURL
-        if bodyChanged || baseChanged || coord.lastBody == nil {
-            // baseURL = parent directory of the open file → relative images,
-            // links, and other assets resolve. Falls back to the bundle for
-            // the welcome screen.
+        if bodyChanged || baseChanged || fileChanged || coord.lastBody == nil {
+            coord.pendingFileURL = fileURL
             let effectiveBase = baseURL ?? Bundle.module.resourceURL
             view.loadHTMLString(Self.shell(body: html, theme: theme),
                                 baseURL: effectiveBase)
             coord.lastBaseURL = baseURL
+            coord.lastFileURL = fileURL
         } else if themeChanged {
             let isDark = theme == .dark
             let js = """
@@ -50,7 +55,6 @@ struct MarkdownWebView: NSViewRepresentable {
             view.evaluateJavaScript(js, completionHandler: nil)
         }
 
-        // Find requests are deduped by nonce so parent re-renders don't re-search.
         if coord.lastFindNonce != findRequest.nonce {
             coord.lastFindNonce = findRequest.nonce
             runFind(on: view, request: findRequest)
@@ -73,13 +77,15 @@ struct MarkdownWebView: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         weak var webView: WKWebView?
         var lastBody: String?
         var lastTheme: ColorScheme?
         var lastFindNonce: UInt64 = 0
         var lastZoom: Double = -1
         var lastBaseURL: URL?
+        var lastFileURL: URL?
+        var pendingFileURL: URL?
 
         func webView(_ webView: WKWebView,
                      decidePolicyFor nav: WKNavigationAction,
@@ -89,6 +95,24 @@ struct MarkdownWebView: NSViewRepresentable {
             }
             NSWorkspace.shared.open(url)
             decisionHandler(.cancel)
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard let url = pendingFileURL else { return }
+            Task { @MainActor in
+                let y = await ScrollStore.shared.scrollY(for: url)
+                if y > 0 {
+                    webView.evaluateJavaScript("window.scrollTo(0, \(y));", completionHandler: nil)
+                }
+            }
+        }
+
+        func userContentController(_ userContentController: WKUserContentController,
+                                   didReceive message: WKScriptMessage) {
+            guard message.name == "rviewScroll",
+                  let y = (message.body as? NSNumber)?.doubleValue,
+                  let url = lastFileURL else { return }
+            Task { await ScrollStore.shared.setScrollY(y, for: url) }
         }
     }
 
@@ -110,7 +134,18 @@ struct MarkdownWebView: NSViewRepresentable {
         </head>
         <body><main class="page">\(body)</main>
         <script>\(hljs)</script>
-        <script>hljs.highlightAll();</script>
+        <script>
+        hljs.highlightAll();
+        (function(){
+          let t = null;
+          window.addEventListener('scroll', function() {
+            if (t) clearTimeout(t);
+            t = setTimeout(function() {
+              window.webkit.messageHandlers.rviewScroll.postMessage(window.scrollY);
+            }, 120);
+          }, { passive: true });
+        })();
+        </script>
         </body>
         </html>
         """
