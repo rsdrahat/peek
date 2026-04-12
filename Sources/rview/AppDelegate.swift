@@ -3,11 +3,8 @@ import UniformTypeIdentifiers
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let args = CommandLine.arguments.dropFirst()
-        for arg in args where !arg.hasPrefix("-") {
-            let url = URL(fileURLWithPath: arg)
+        if let url = Self.fileURL(fromArgs: CommandLine.arguments) {
             NotificationCenter.default.post(name: .rviewOpenFile, object: url)
-            break
         }
     }
 
@@ -29,5 +26,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if panel.runModal() == .OK, let url = panel.url {
             NotificationCenter.default.post(name: .rviewOpenFile, object: url)
         }
+    }
+
+    /// Extract a file path from CLI arguments. The first non-flag argument
+    /// (skipping argv[0]) is treated as a file path.
+    static func fileURL(fromArgs args: [String]) -> URL? {
+        for arg in args.dropFirst() where !arg.hasPrefix("-") {
+            return URL(fileURLWithPath: arg)
+        }
+        return nil
     }
 }
