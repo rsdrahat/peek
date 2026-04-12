@@ -21,6 +21,7 @@ struct MainWindow: View {
                 findRequest: findRequest,
                 zoom: zoom,
                 baseURL: document.currentURL?.deletingLastPathComponent(),
+                fileURL: document.currentURL,
                 onFindResult: { ok in findLastResult = ok },
                 onWebViewReady: { view in webView = view }
             )
