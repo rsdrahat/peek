@@ -5,9 +5,10 @@ import Combine
 final class MarkdownDocument: ObservableObject {
     @Published private(set) var html: String = welcomeHTML
     @Published private(set) var displayTitle: String = "rview"
+    @Published private(set) var currentURL: URL?
 
-    private var currentURL: URL?
     private var watcher: FileWatcher?
+
     private let renderer = Renderer()
 
     func open(url: URL) {

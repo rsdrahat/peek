@@ -6,6 +6,7 @@ struct MarkdownWebView: NSViewRepresentable {
     let theme: ColorScheme
     var findRequest: FindRequest = FindRequest(query: "", backwards: false, nonce: 0)
     var zoom: Double = 1.0
+    var baseURL: URL? = nil
     var onFindResult: (Bool) -> Void = { _ in }
 
     func makeNSView(context: Context) -> WKWebView {
@@ -28,9 +29,15 @@ struct MarkdownWebView: NSViewRepresentable {
             coord.lastZoom = zoom
         }
 
-        if bodyChanged || coord.lastBody == nil {
+        let baseChanged = coord.lastBaseURL != baseURL
+        if bodyChanged || baseChanged || coord.lastBody == nil {
+            // baseURL = parent directory of the open file → relative images,
+            // links, and other assets resolve. Falls back to the bundle for
+            // the welcome screen.
+            let effectiveBase = baseURL ?? Bundle.module.resourceURL
             view.loadHTMLString(Self.shell(body: html, theme: theme),
-                                baseURL: Bundle.module.resourceURL)
+                                baseURL: effectiveBase)
+            coord.lastBaseURL = baseURL
         } else if themeChanged {
             let isDark = theme == .dark
             let js = """
@@ -70,6 +77,7 @@ struct MarkdownWebView: NSViewRepresentable {
         var lastTheme: ColorScheme?
         var lastFindNonce: UInt64 = 0
         var lastZoom: Double = -1
+        var lastBaseURL: URL?
 
         func webView(_ webView: WKWebView,
                      decidePolicyFor nav: WKNavigationAction,

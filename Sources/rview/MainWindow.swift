@@ -18,6 +18,7 @@ struct MainWindow: View {
                 theme: effectiveTheme,
                 findRequest: findRequest,
                 zoom: zoom,
+                baseURL: document.currentURL?.deletingLastPathComponent(),
                 onFindResult: { ok in findLastResult = ok }
             )
             .ignoresSafeArea()
