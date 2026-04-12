@@ -3,6 +3,7 @@ import WebKit
 
 struct MainWindow: View {
     @StateObject private var document = MarkdownDocument()
+    @StateObject private var folder = FolderBrowser()
     @Environment(\.colorScheme) private var systemScheme
     @State private var themeOverride: ColorScheme? = nil
 
@@ -16,6 +17,17 @@ struct MainWindow: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            if let root = folder.root {
+                FileTreeSidebar(
+                    root: root,
+                    showAllFiles: Binding(get: { folder.showAllFiles }, set: { folder.showAllFiles = $0 }),
+                    currentURL: document.currentURL
+                ) { url in
+                    document.open(url: url)
+                }
+                .transition(.move(edge: .leading))
+                Divider()
+            }
             if tocVisible {
                 TOCSidebar(entries: document.toc) { entry in
                     scrollToAnchor(entry.id)
@@ -26,6 +38,7 @@ struct MainWindow: View {
             content
         }
         .animation(.easeInOut(duration: 0.15), value: tocVisible)
+        .animation(.easeInOut(duration: 0.15), value: folder.root)
     }
 
     private var content: some View {
@@ -65,6 +78,12 @@ struct MainWindow: View {
         .onReceive(NotificationCenter.default.publisher(for: .rviewOpenFile)) { note in
             if let url = note.object as? URL { document.open(url: url) }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .rviewOpenFolder)) { note in
+            if let url = note.object as? URL { folder.open(rootURL: url) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .rviewCloseFolder)) { _ in
+            folder.close()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .rviewReload)) { _ in
             document.reload()
         }
@@ -100,7 +119,16 @@ struct MainWindow: View {
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             guard let provider = providers.first else { return false }
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                if let url { DispatchQueue.main.async { document.open(url: url) } }
+                guard let url else { return }
+                DispatchQueue.main.async {
+                    var isDir: ObjCBool = false
+                    FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+                    if isDir.boolValue {
+                        folder.open(rootURL: url)
+                    } else {
+                        document.open(url: url)
+                    }
+                }
             }
             return true
         }

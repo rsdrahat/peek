@@ -18,6 +18,9 @@ struct RviewApp: App {
             CommandGroup(replacing: .newItem) {
                 Button("Open…") { appDelegate.openPanel() }
                     .keyboardShortcut("o", modifiers: .command)
+                Button("Open Folder…") { appDelegate.openFolderPanel() }
+                    .keyboardShortcut("o", modifiers: [.command, .option])
+                Button("Close Folder") { NotificationCenter.default.post(name: .rviewCloseFolder, object: nil) }
             }
             CommandGroup(after: .saveItem) {
                 Button("Export as PDF…") { NotificationCenter.default.post(name: .rviewExportPDF, object: nil) }
@@ -55,6 +58,8 @@ extension Notification.Name {
     static let rviewReload = Notification.Name("rview.reload")
     static let rviewToggleTheme = Notification.Name("rview.toggleTheme")
     static let rviewOpenFile = Notification.Name("rview.openFile")
+    static let rviewOpenFolder = Notification.Name("rview.openFolder")
+    static let rviewCloseFolder = Notification.Name("rview.closeFolder")
     static let rviewFindOpen = Notification.Name("rview.findOpen")
     static let rviewZoomIn = Notification.Name("rview.zoomIn")
     static let rviewZoomOut = Notification.Name("rview.zoomOut")

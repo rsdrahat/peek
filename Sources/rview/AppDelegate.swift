@@ -4,16 +4,36 @@ import UniformTypeIdentifiers
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let url = Self.fileURL(fromArgs: CommandLine.arguments) {
-            NotificationCenter.default.post(name: .rviewOpenFile, object: url)
+            Self.post(url: url)
         }
     }
 
     func application(_ sender: NSApplication, openFile filename: String) -> Bool {
-        NotificationCenter.default.post(name: .rviewOpenFile, object: URL(fileURLWithPath: filename))
+        Self.post(url: URL(fileURLWithPath: filename))
         return true
     }
 
+    static func post(url: URL) {
+        var isDir: ObjCBool = false
+        FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+        if isDir.boolValue {
+            NotificationCenter.default.post(name: .rviewOpenFolder, object: url)
+        } else {
+            NotificationCenter.default.post(name: .rviewOpenFile, object: url)
+        }
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+
+    func openFolderPanel() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        if panel.runModal() == .OK, let url = panel.url {
+            NotificationCenter.default.post(name: .rviewOpenFolder, object: url)
+        }
+    }
 
     func openPanel() {
         let panel = NSOpenPanel()
@@ -21,10 +41,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             UTType(filenameExtension: "md") ?? .plainText,
             UTType(filenameExtension: "markdown") ?? .plainText,
             .plainText,
+            .folder,
         ]
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url {
-            NotificationCenter.default.post(name: .rviewOpenFile, object: url)
+            Self.post(url: url)
         }
     }
 
