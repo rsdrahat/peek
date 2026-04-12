@@ -22,7 +22,7 @@ final class MarkdownDocumentTests: XCTestCase {
         let doc = MarkdownDocument()
         doc.open(url: url)
 
-        XCTAssertTrue(doc.html.contains("<h1>Hello</h1>"), doc.html)
+        XCTAssertTrue(doc.html.contains("<h1 id=\"hello\">Hello</h1>"), doc.html)
         XCTAssertTrue(doc.html.contains("World."))
         XCTAssertEqual(doc.displayTitle, "a.md")
     }
@@ -76,6 +76,19 @@ final class MarkdownDocumentTests: XCTestCase {
         doc.reload()
         XCTAssertTrue(doc.html.contains("Second"))
         XCTAssertFalse(doc.html.contains("First"))
+    }
+
+    func testTOCExtractedFromHeadings() throws {
+        let url = tmp.appendingPathComponent("toc.md")
+        try "# One\n\n## Two\n\n### Three\n\n## Two Again".write(to: url, atomically: true, encoding: .utf8)
+        let doc = MarkdownDocument()
+        doc.open(url: url)
+
+        XCTAssertEqual(doc.toc.count, 4)
+        XCTAssertEqual(doc.toc.map(\.level), [1, 2, 3, 2])
+        XCTAssertEqual(doc.toc.map(\.text), ["One", "Two", "Three", "Two Again"])
+        // Duplicate slugs get suffixes.
+        XCTAssertEqual(Set(doc.toc.map(\.id)).count, doc.toc.count)
     }
 
     func testOpenSwitchesCurrentFile() throws {

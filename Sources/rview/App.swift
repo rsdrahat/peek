@@ -32,6 +32,8 @@ struct RviewApp: App {
                     .keyboardShortcut("r", modifiers: .command)
                 Button("Toggle Theme") { NotificationCenter.default.post(name: .rviewToggleTheme, object: nil) }
                     .keyboardShortcut("d", modifiers: [.command, .shift])
+                Button("Toggle Outline") { NotificationCenter.default.post(name: .rviewToggleTOC, object: nil) }
+                    .keyboardShortcut("o", modifiers: [.command, .shift])
             }
             CommandGroup(replacing: .textEditing) {
                 Button("Find…") { NotificationCenter.default.post(name: .rviewFindOpen, object: nil) }
@@ -59,4 +61,6 @@ extension Notification.Name {
     static let rviewZoomReset = Notification.Name("rview.zoomReset")
     static let rviewPrint = Notification.Name("rview.print")
     static let rviewExportPDF = Notification.Name("rview.exportPDF")
+    static let rviewToggleTOC = Notification.Name("rview.toggleTOC")
+    static let rviewScrollToAnchor = Notification.Name("rview.scrollToAnchor")
 }

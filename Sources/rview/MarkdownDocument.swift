@@ -6,6 +6,7 @@ final class MarkdownDocument: ObservableObject {
     @Published private(set) var html: String = welcomeHTML
     @Published private(set) var displayTitle: String = "rview"
     @Published private(set) var currentURL: URL?
+    @Published private(set) var toc: [TOCEntry] = []
 
     private var watcher: FileWatcher?
 
@@ -41,10 +42,13 @@ final class MarkdownDocument: ObservableObject {
         }
         do {
             let source = try String(contentsOf: url, encoding: .utf8)
-            html = renderer.html(from: source)
+            let result = renderer.render(source)
+            html = result.html
+            toc = result.toc
             displayTitle = url.lastPathComponent
         } catch {
             html = Self.readErrorHTML(url: url, error: error)
+            toc = []
         }
     }
 
