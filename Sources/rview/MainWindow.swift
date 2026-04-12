@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 struct MainWindow: View {
     @StateObject private var document = MarkdownDocument()
@@ -10,6 +11,7 @@ struct MainWindow: View {
     @State private var findLastResult = true
     @State private var findRequest = FindRequest(query: "", backwards: false, nonce: 0)
     @State private var zoom: Double = Pref.zoom
+    @State private var webView: WKWebView?
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -19,7 +21,8 @@ struct MainWindow: View {
                 findRequest: findRequest,
                 zoom: zoom,
                 baseURL: document.currentURL?.deletingLastPathComponent(),
-                onFindResult: { ok in findLastResult = ok }
+                onFindResult: { ok in findLastResult = ok },
+                onWebViewReady: { view in webView = view }
             )
             .ignoresSafeArea()
 
@@ -63,6 +66,17 @@ struct MainWindow: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .rviewZoomReset)) { _ in
             setZoom(Pref.defaultZoom)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .rviewPrint)) { _ in
+            if let webView {
+                PrintExport.print(webView: webView, title: document.displayTitle)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .rviewExportPDF)) { _ in
+            if let webView {
+                let stem = (document.currentURL?.deletingPathExtension().lastPathComponent) ?? "document"
+                PrintExport.exportPDF(webView: webView, suggestedName: "\(stem).pdf")
+            }
         }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             guard let provider = providers.first else { return false }
