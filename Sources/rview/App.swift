@@ -23,6 +23,10 @@ struct RviewApp: App {
                 Button("Toggle Theme") { NotificationCenter.default.post(name: .rviewToggleTheme, object: nil) }
                     .keyboardShortcut("d", modifiers: [.command, .shift])
             }
+            CommandGroup(replacing: .textEditing) {
+                Button("Find…") { NotificationCenter.default.post(name: .rviewFindOpen, object: nil) }
+                    .keyboardShortcut("f", modifiers: .command)
+            }
         }
     }
 }
@@ -31,4 +35,5 @@ extension Notification.Name {
     static let rviewReload = Notification.Name("rview.reload")
     static let rviewToggleTheme = Notification.Name("rview.toggleTheme")
     static let rviewOpenFile = Notification.Name("rview.openFile")
+    static let rviewFindOpen = Notification.Name("rview.findOpen")
 }

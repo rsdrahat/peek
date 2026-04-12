@@ -4,6 +4,8 @@ import WebKit
 struct MarkdownWebView: NSViewRepresentable {
     let html: String
     let theme: ColorScheme
+    var findRequest: FindRequest = FindRequest(query: "", backwards: false, nonce: 0)
+    var onFindResult: (Bool) -> Void = { _ in }
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -24,7 +26,6 @@ struct MarkdownWebView: NSViewRepresentable {
             view.loadHTMLString(Self.shell(body: html, theme: theme),
                                 baseURL: Bundle.module.resourceURL)
         } else if themeChanged {
-            // Theme-only change: flip attribute + swap hljs stylesheet in-page, preserve scroll.
             let isDark = theme == .dark
             let js = """
             document.documentElement.dataset.theme = '\(isDark ? "dark" : "light")';
@@ -34,8 +35,25 @@ struct MarkdownWebView: NSViewRepresentable {
             view.evaluateJavaScript(js, completionHandler: nil)
         }
 
+        // Find requests are deduped by nonce so parent re-renders don't re-search.
+        if coord.lastFindNonce != findRequest.nonce {
+            coord.lastFindNonce = findRequest.nonce
+            runFind(on: view, request: findRequest)
+        }
+
         coord.lastBody = html
         coord.lastTheme = theme
+    }
+
+    private func runFind(on view: WKWebView, request: FindRequest) {
+        guard !request.query.isEmpty else { return }
+        let config = WKFindConfiguration()
+        config.backwards = request.backwards
+        config.caseSensitive = false
+        config.wraps = true
+        view.find(request.query, configuration: config) { result in
+            onFindResult(result.matchFound)
+        }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -44,6 +62,7 @@ struct MarkdownWebView: NSViewRepresentable {
         weak var webView: WKWebView?
         var lastBody: String?
         var lastTheme: ColorScheme?
+        var lastFindNonce: UInt64 = 0
 
         func webView(_ webView: WKWebView,
                      decidePolicyFor nav: WKNavigationAction,
