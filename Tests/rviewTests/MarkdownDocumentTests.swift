@@ -32,8 +32,37 @@ final class MarkdownDocumentTests: XCTestCase {
         let doc = MarkdownDocument()
         doc.open(url: url)
 
-        XCTAssertTrue(doc.html.contains("Failed to read"), doc.html)
-        XCTAssertFalse(doc.html.isEmpty)
+        XCTAssertTrue(doc.html.contains("File not found"), doc.html)
+        XCTAssertTrue(doc.displayTitle.contains("(missing)"))
+    }
+
+    func testFileDeletedAfterOpenShowsMissingMessageOnReload() throws {
+        let url = tmp.appendingPathComponent("transient.md")
+        try "# Here".write(to: url, atomically: true, encoding: .utf8)
+
+        let doc = MarkdownDocument()
+        doc.open(url: url)
+        XCTAssertTrue(doc.html.contains("Here"))
+        XCTAssertFalse(doc.displayTitle.contains("(missing)"))
+
+        try FileManager.default.removeItem(at: url)
+        doc.reload()
+
+        XCTAssertTrue(doc.html.contains("File not found"))
+        XCTAssertTrue(doc.displayTitle.contains("(missing)"))
+    }
+
+    func testRecoverAfterFileReappears() throws {
+        let url = tmp.appendingPathComponent("flaky.md")
+        let doc = MarkdownDocument()
+        doc.open(url: url)
+        XCTAssertTrue(doc.html.contains("File not found"))
+
+        try "# Back".write(to: url, atomically: true, encoding: .utf8)
+        doc.reload()
+
+        XCTAssertTrue(doc.html.contains("Back"))
+        XCTAssertFalse(doc.displayTitle.contains("(missing)"))
     }
 
     func testReloadPicksUpDiskChanges() throws {
