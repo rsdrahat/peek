@@ -8,14 +8,22 @@ let package = Package(
         .executable(name: "rview", targets: ["rview"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/JohnSundell/Ink.git", from: "0.6.0"),
+        .package(url: "https://github.com/apple/swift-markdown.git", from: "0.4.0"),
     ],
     targets: [
         .executableTarget(
             name: "rview",
-            dependencies: ["Ink"],
+            dependencies: [
+                .product(name: "Markdown", package: "swift-markdown"),
+            ],
             resources: [.copy("Resources")]
         ),
-        .testTarget(name: "rviewTests", dependencies: ["rview"]),
+        .testTarget(
+            name: "rviewTests",
+            dependencies: [
+                "rview",
+                .product(name: "Markdown", package: "swift-markdown"),
+            ]
+        ),
     ]
 )
