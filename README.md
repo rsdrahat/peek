@@ -9,13 +9,21 @@ A light, native markdown viewer for macOS. Built on SwiftUI + WebKit.
 
 ## Install
 
-Requires macOS 13+ and Swift 5.9+.
+Requires macOS 14+ (Sonoma) and Swift 5.9+.
 
 ```bash
 git clone https://github.com/rsdrahat/rview.git
 cd rview
 make app
 open .build/rview.app
+```
+
+**First launch:** Because the app isn't notarized yet, Gatekeeper blocks it on double-click. Right-click the app → *Open* → *Open anyway*. You only need to do this once. Notarization is a post-1.0 concern.
+
+To invoke from the command line, symlink the binary:
+```bash
+ln -s "$(pwd)/.build/rview.app/Contents/MacOS/rview" /usr/local/bin/rview
+rview README.md
 ```
 
 ## Use
