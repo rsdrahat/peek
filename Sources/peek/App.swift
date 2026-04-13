@@ -4,6 +4,7 @@ import AppKit
 @main
 struct PeekApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @StateObject private var recents = RecentFilesStore.shared
 
     var body: some Scene {
         WindowGroup {
@@ -20,6 +21,18 @@ struct PeekApp: App {
                     .keyboardShortcut("o", modifiers: .command)
                 Button("Open Folder…") { appDelegate.openFolderPanel() }
                     .keyboardShortcut("o", modifiers: [.command, .option])
+                Menu("Open Recent") {
+                    let items = recents.existing()
+                    if items.isEmpty {
+                        Text("No Recent Files").disabled(true)
+                    } else {
+                        ForEach(items, id: \.self) { url in
+                            Button(url.lastPathComponent) { AppDelegate.post(url: url) }
+                        }
+                        Divider()
+                        Button("Clear Menu") { recents.clear() }
+                    }
+                }
                 Button("Close Folder") { NotificationCenter.default.post(name: .peekCloseFolder, object: nil) }
             }
             CommandGroup(after: .saveItem) {

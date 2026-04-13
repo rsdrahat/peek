@@ -123,6 +123,7 @@ struct MainWindow: View {
                 DispatchQueue.main.async {
                     var isDir: ObjCBool = false
                     FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+                    RecentFilesStore.shared.add(url)
                     if isDir.boolValue {
                         folder.open(rootURL: url)
                     } else {
