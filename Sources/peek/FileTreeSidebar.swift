@@ -51,8 +51,14 @@ struct FileTreeSidebar: View {
         .focused($focused)
         .focusEffectDisabled()
         .onAppear {
-            if selection == nil { selection = firstFile() ?? firstNode() }
+            if selection == nil { selection = currentURL ?? firstFile() ?? firstNode() }
+            if let current = currentURL { expandAncestors(of: current) }
             focused = true
+        }
+        .onChange(of: currentURL) { _, new in
+            guard let new else { return }
+            expandAncestors(of: new)
+            selection = new
         }
         .onKeyPress(keys: ["j", "k", "h", "l", "g", "G", " ", "o"]) { press in
             handle(key: press.key); return .handled
@@ -179,6 +185,15 @@ struct FileTreeSidebar: View {
 
     private func findParent(of url: URL) -> FolderNode? {
         FolderNode.findParent(of: url, in: root.children ?? [], parent: nil)
+    }
+
+    private func expandAncestors(of url: URL) {
+        let rootPath = root.url.standardizedFileURL.path
+        var dir = url.standardizedFileURL.deletingLastPathComponent()
+        while dir.path.hasPrefix(rootPath) && dir.path != rootPath {
+            expanded.insert(dir)
+            dir = dir.deletingLastPathComponent()
+        }
     }
 }
 

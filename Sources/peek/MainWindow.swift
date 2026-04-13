@@ -51,7 +51,8 @@ struct MainWindow: View {
                 baseURL: document.currentURL?.deletingLastPathComponent(),
                 fileURL: document.currentURL,
                 onFindResult: { ok in findLastResult = ok },
-                onWebViewReady: { view in webView = view }
+                onWebViewReady: { view in webView = view },
+                onInternalLink: { url in document.open(url: url) }
             )
             .ignoresSafeArea()
 
