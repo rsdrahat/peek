@@ -60,6 +60,27 @@ struct FileTreeSidebar: View {
         .onKeyPress(.return) { activateSelection(); return .handled }
         .onKeyPress(.downArrow) { move(+1); return .handled }
         .onKeyPress(.upArrow) { move(-1); return .handled }
+        .onReceive(NotificationCenter.default.publisher(for: .peekRevealInSidebar)) { note in
+            if let url = note.object as? URL { reveal(url: url) }
+        }
+    }
+
+    private func reveal(url: URL) {
+        let standardized = url.standardizedFileURL
+        let rootStd = root.url.standardizedFileURL
+        // Walk up from the target, expanding every ancestor that lies under root.
+        var dir = standardized
+        var ancestors: [URL] = []
+        while dir.path.hasPrefix(rootStd.path + "/") {
+            ancestors.append(dir)
+            dir = dir.deletingLastPathComponent()
+        }
+        for ancestor in ancestors.reversed() {
+            if let node = findNode(ancestor), node.isDirectory {
+                expanded.insert(ancestor)
+            }
+        }
+        selection = standardized
     }
 
     private var header: some View {

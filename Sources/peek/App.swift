@@ -68,4 +68,5 @@ extension Notification.Name {
     static let peekExportPDF = Notification.Name("peek.exportPDF")
     static let peekToggleTOC = Notification.Name("peek.toggleTOC")
     static let peekScrollToAnchor = Notification.Name("peek.scrollToAnchor")
+    static let peekRevealInSidebar = Notification.Name("peek.revealInSidebar")
 }

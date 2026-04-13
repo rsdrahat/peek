@@ -42,6 +42,23 @@ struct MainWindow: View {
     }
 
     private var content: some View {
+        VStack(spacing: 0) {
+            if let root = folder.root, let current = document.currentURL {
+                let segs = BreadcrumbPath.segments(root: root.url, current: current)
+                if !segs.isEmpty {
+                    Breadcrumb(segments: segs) { seg in
+                        if !seg.isFile {
+                            NotificationCenter.default.post(name: .peekRevealInSidebar, object: seg.url)
+                        }
+                    }
+                    Divider()
+                }
+            }
+            contentBody
+        }
+    }
+
+    private var contentBody: some View {
         ZStack(alignment: .top) {
             MarkdownWebView(
                 html: document.html,
