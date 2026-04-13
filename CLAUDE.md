@@ -4,7 +4,11 @@ Guidance for Claude working on this repository.
 
 ## Project
 
-**peek** — a light, native macOS markdown viewer. The product promise is exactly three things, in order: **light, native, beautiful**. See [ARCHITECTURE.md](ARCHITECTURE.md) for the stack rationale, layout, and rules.
+**peek** — a light, native macOS markdown viewer. The product promise is exactly three things, in order: **light, native, beautiful**.
+
+Motivation (canonical, for README/site/PR copy): *Agents don't read .docx. Neither should you.* .docx is a legacy container for humans writing for other humans; markdown is what every LLM writes, every agent parses, every codebase ships — and peek is the view layer for that world. Every change should be justifiable against at least one of the three promise words; the motivation explains *why the world needs this*, the promise explains *what peek is*.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the stack rationale, layout, and rules.
 
 ## Build & test
 
@@ -38,4 +42,4 @@ Do not blur sprint boundaries without updating the milestones. Editor work does 
 
 ## Versioning & releases
 
-SemVer. `0.x.y` until we ship 1.0. Release = tag + GitHub release with the built `.app` zipped and a SHA256. Notarization is a post-1.0 concern; pre-1.0 users are assumed to right-click → Open.
+SemVer. `0.x.y` until we ship 1.0. Release = tag (`v*.*.*`) + GitHub release with the built `.app` zipped, codesigned with a Developer ID, notarized, and a SHA256 alongside. The release workflow lives in `.github/workflows/release.yml` and runs on tag push.
