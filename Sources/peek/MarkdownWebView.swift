@@ -15,7 +15,7 @@ struct MarkdownWebView: NSViewRepresentable {
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.allowsContentJavaScript = true
         let userContent = WKUserContentController()
-        userContent.add(context.coordinator, name: "rviewScroll")
+        userContent.add(context.coordinator, name: "peekScroll")
         config.userContentController = userContent
 
         let view = WKWebView(frame: .zero, configuration: config)
@@ -109,7 +109,7 @@ struct MarkdownWebView: NSViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
-            guard message.name == "rviewScroll",
+            guard message.name == "peekScroll",
                   let y = (message.body as? NSNumber)?.doubleValue,
                   let url = lastFileURL else { return }
             Task { await ScrollStore.shared.setScrollY(y, for: url) }
@@ -141,7 +141,7 @@ struct MarkdownWebView: NSViewRepresentable {
           window.addEventListener('scroll', function() {
             if (t) clearTimeout(t);
             t = setTimeout(function() {
-              window.webkit.messageHandlers.rviewScroll.postMessage(window.scrollY);
+              window.webkit.messageHandlers.peekScroll.postMessage(window.scrollY);
             }, 120);
           }, { passive: true });
         })();

@@ -8,7 +8,7 @@ final class FileWatcher {
         let fd = open(url.path, O_EVTONLY)
         guard fd >= 0 else { return nil }
         self.fd = fd
-        let queue = DispatchQueue(label: "rview.watcher", qos: .utility)
+        let queue = DispatchQueue(label: "peek.watcher", qos: .utility)
         source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fd,
             eventMask: [.write, .extend, .rename, .delete, .attrib],

@@ -1,8 +1,8 @@
 import XCTest
-@testable import rview
+@testable import peek
 
 /// Fixture-driven renderer tests. Each `Fixtures/*.md` has a sibling
-/// `*.expected.html`. Set `RVIEW_UPDATE_FIXTURES=1` to regenerate expected files.
+/// `*.expected.html`. Set `PEEK_UPDATE_FIXTURES=1` to regenerate expected files.
 final class RendererTests: XCTestCase {
     func testAllFixtures() throws {
         let renderer = Renderer()
@@ -15,7 +15,7 @@ final class RendererTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(mdFiles.count, 10,
             "Expected at least 10 fixtures, found \(mdFiles.count)")
 
-        let update = ProcessInfo.processInfo.environment["RVIEW_UPDATE_FIXTURES"] == "1"
+        let update = ProcessInfo.processInfo.environment["PEEK_UPDATE_FIXTURES"] == "1"
 
         for md in mdFiles {
             let source = try String(contentsOf: md, encoding: .utf8)
@@ -24,7 +24,7 @@ final class RendererTests: XCTestCase {
 
             if update || !FileManager.default.fileExists(atPath: expectedURL.path) {
                 try (actual + "\n").write(to: expectedURL, atomically: true, encoding: .utf8)
-                XCTFail("Wrote \(expectedURL.lastPathComponent). Re-run tests without RVIEW_UPDATE_FIXTURES.")
+                XCTFail("Wrote \(expectedURL.lastPathComponent). Re-run tests without PEEK_UPDATE_FIXTURES.")
                 continue
             }
 
@@ -32,7 +32,7 @@ final class RendererTests: XCTestCase {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             XCTAssertEqual(actual, expected,
                 "Fixture mismatch in \(md.lastPathComponent). " +
-                "Set RVIEW_UPDATE_FIXTURES=1 if the change is intentional.")
+                "Set PEEK_UPDATE_FIXTURES=1 if the change is intentional.")
         }
     }
 

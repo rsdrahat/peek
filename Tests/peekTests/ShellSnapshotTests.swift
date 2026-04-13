@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import rview
+@testable import peek
 
 final class ShellSnapshotTests: XCTestCase {
     func testLightShellContainsExpectedStructure() {

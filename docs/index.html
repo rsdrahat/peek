@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>peek — markdown, natively.</title>
+<meta name="description" content="A light, native macOS markdown viewer. ~2 MB binary, sub-300 ms cold start, WebKit-native typography.">
+<meta property="og:title" content="peek — markdown, natively.">
+<meta property="og:description" content="A light, native macOS markdown viewer.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='52' font-family='ui-serif,Georgia,serif'%3Ep%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1><span class="glyph">p.</span><span class="name">peek</span></h1>
+    <p class="tagline">markdown, <em>natively</em>.</p>
+  </header>
+
+  <section class="pitch">
+    <pre><code><span class="prompt">$</span> peek README.md
+<span class="prompt">$</span> peek ./docs</code></pre>
+    <p class="lede">A light, native macOS markdown viewer. <strong>~2 MB</strong> binary, sub-<strong>300 ms</strong> cold start, WebKit-native typography. Nothing Electron touched.</p>
+  </section>
+
+  <section class="features">
+    <div><h3>Tiny</h3><p>Single-digit megabytes. No Chromium, no Node, no runtime.</p></div>
+    <div><h3>Native</h3><p>⌘F, print, smooth scroll, VoiceOver — delegated to WebKit.</p></div>
+    <div><h3>Beautiful</h3><p>Serif body, sans headings, real vertical rhythm. Auto dark mode.</p></div>
+  </section>
+
+  <section class="install">
+    <h2>Install</h2>
+    <pre><code>git clone https://github.com/rsdrahat/peek.git
+cd peek
+make app
+open .build/peek.app</code></pre>
+    <p class="meta">macOS 14+, Swift 5.9+. Not notarized pre-1.0 — right-click → Open, once.</p>
+  </section>
+
+  <section class="keys">
+    <h2>Keys</h2>
+    <table>
+      <tr><th>⌘O / ⌥⌘O</th><td>open file / open folder</td></tr>
+      <tr><th>⌘F</th><td>find in page</td></tr>
+      <tr><th>⌘R</th><td>reload</td></tr>
+      <tr><th>⌘⇧O</th><td>toggle outline</td></tr>
+      <tr><th>⌘⇧D</th><td>toggle light/dark</td></tr>
+      <tr><th>⌘= ⌘- ⌘0</th><td>zoom</td></tr>
+      <tr><th>⌘P / ⌘⇧E</th><td>print / export PDF</td></tr>
+      <tr><th>j k h l</th><td>vim-style sidebar nav</td></tr>
+    </table>
+  </section>
+
+  <section class="roadmap">
+    <h2>Roadmap</h2>
+    <ol>
+      <li><span class="tag done">shipped</span> <strong>v0.1 MVP</strong> — render, watch, theme, GFM, drag-drop</li>
+      <li><span class="tag done">shipped</span> <strong>v0.2 Polish</strong> — window/scroll memory, zoom, print, export</li>
+      <li><span class="tag wip">in progress</span> <strong>v0.3 Folder mode</strong> — sidebar tree, vim nav, breadcrumb, inter-doc links</li>
+      <li><span class="tag next">next</span> <strong>v0.4 Editor</strong> — split view, live preview</li>
+      <li><span class="tag next">later</span> <strong>v0.5 Themes</strong> — presets, custom CSS, fonts</li>
+    </ol>
+  </section>
+
+  <footer>
+    <a href="https://github.com/rsdrahat/peek">github</a> ·
+    <a href="https://github.com/rsdrahat/peek/issues">issues</a> ·
+    <a href="https://github.com/rsdrahat/peek/blob/main/ARCHITECTURE.md">architecture</a> ·
+    <span>MIT</span>
+  </footer>
+</main>
+</body>
+</html>

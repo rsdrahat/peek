@@ -40,7 +40,7 @@ jobs:
 
       - name: Binary size budget (≤ 10 MB)
         run: |
-          bin=$(swift build -c release --show-bin-path)/rview
+          bin=$(swift build -c release --show-bin-path)/peek
           bytes=$(stat -f%z "$bin")
           mb=$(awk "BEGIN { printf \"%.2f\", $bytes / 1024 / 1024 }")
           echo "Binary size: ${mb} MB (${bytes} bytes)"
@@ -54,7 +54,7 @@ jobs:
       - name: Bundle size budget (binary + resources ≤ 15 MB)
         run: |
           build_dir=$(swift build -c release --show-bin-path)
-          bytes=$(du -sk "$build_dir/rview" "$build_dir"/*.bundle 2>/dev/null | awk '{sum+=$1} END {print sum*1024}')
+          bytes=$(du -sk "$build_dir/peek" "$build_dir"/*.bundle 2>/dev/null | awk '{sum+=$1} END {print sum*1024}')
           mb=$(awk "BEGIN { printf \"%.2f\", $bytes / 1024 / 1024 }")
           echo "Bundle (binary + resources): ${mb} MB"
           echo "bundle-size-mb=${mb}" >> "$GITHUB_STEP_SUMMARY"

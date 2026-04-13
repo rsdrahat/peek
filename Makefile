@@ -1,5 +1,5 @@
-APP_NAME      := rview
-BUNDLE_ID     := dev.rview.app
+APP_NAME      := peek
+BUNDLE_ID     := dev.peek.app
 CONFIG        := release
 BUILD_DIR     := .build
 APP_BUNDLE    := $(BUILD_DIR)/$(APP_NAME).app
@@ -17,13 +17,13 @@ test:
 
 # Regenerate fixture .expected.html files when output changes intentionally.
 test-update:
-	RVIEW_UPDATE_FIXTURES=1 swift test || true
+	PEEK_UPDATE_FIXTURES=1 swift test || true
 	@echo "Fixtures regenerated. Re-run 'make test' to verify."
 
 test-coverage:
 	swift test --enable-code-coverage
 	@xcrun llvm-cov report \
-		$$(swift build --show-bin-path)/rviewPackageTests.xctest/Contents/MacOS/rviewPackageTests \
+		$$(swift build --show-bin-path)/peekPackageTests.xctest/Contents/MacOS/peekPackageTests \
 		-instr-profile=$$(swift build --show-bin-path)/codecov/default.profdata \
 		-ignore-filename-regex='.build|Tests' || true
 

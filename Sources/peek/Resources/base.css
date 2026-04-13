@@ -112,26 +112,26 @@ input[type="checkbox"] { accent-color: var(--accent); margin-right: 0.4em; }
 
 ::selection { background: var(--selection); }
 
-.rview-error {
+.peek-error {
   text-align: center;
   padding: 4em 1em;
   color: var(--muted);
 }
-.rview-error h1 {
+.peek-error h1 {
   font-family: var(--sans);
   font-weight: 500;
   color: var(--fg);
   margin-top: 0;
 }
-.rview-error-path code {
+.peek-error-path code {
   font-size: 0.85em;
   word-break: break-all;
 }
-.rview-error-hint {
+.peek-error-hint {
   margin-top: 2em;
   font-size: 0.9em;
 }
-.rview-error kbd {
+.peek-error kbd {
   font-family: var(--mono);
   font-size: 0.85em;
   background: var(--code-bg);

@@ -1,5 +1,5 @@
 import XCTest
-@testable import rview
+@testable import peek
 
 final class PreferencesTests: XCTestCase {
     override func setUp() {
