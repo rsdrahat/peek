@@ -29,8 +29,8 @@ jobs:
           path: |
             .build
             ~/Library/Developer/Xcode/DerivedData
-          key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved', 'Package.swift') }}
-          restore-keys: spm-${{ runner.os }}-
+          key: spm-peek-${{ runner.os }}-${{ hashFiles('Package.resolved', 'Package.swift') }}
+          restore-keys: spm-peek-${{ runner.os }}-
 
       - name: Build (release)
         run: swift build -c release
