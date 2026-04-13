@@ -75,47 +75,29 @@ struct MainWindow: View {
         .onChange(of: findVisible) { _, v in
             if !v { findQuery = ""; findLastResult = true }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .rviewOpenFile)) { note in
-            if let url = note.object as? URL { document.open(url: url) }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .rviewOpenFolder)) { note in
-            if let url = note.object as? URL { folder.open(rootURL: url) }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .rviewCloseFolder)) { _ in
-            folder.close()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .rviewReload)) { _ in
-            document.reload()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .rviewToggleTheme)) { _ in
-            themeOverride = (effectiveTheme == .dark) ? .light : .dark
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .rviewFindOpen)) { _ in
-            findVisible = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .rviewZoomIn)) { _ in
-            setZoom(zoom + Pref.zoomStep)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .rviewZoomOut)) { _ in
-            setZoom(zoom - Pref.zoomStep)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .rviewZoomReset)) { _ in
-            setZoom(Pref.defaultZoom)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .rviewPrint)) { _ in
-            if let webView {
-                PrintExport.print(webView: webView, title: document.displayTitle)
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .rviewExportPDF)) { _ in
-            if let webView {
-                let stem = (document.currentURL?.deletingPathExtension().lastPathComponent) ?? "document"
-                PrintExport.exportPDF(webView: webView, suggestedName: "\(stem).pdf")
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .rviewToggleTOC)) { _ in
-            tocVisible.toggle()
-        }
+        .modifier(NotificationBridge(
+            onOpenFile: { document.open(url: $0) },
+            onOpenFolder: { folder.open(rootURL: $0) },
+            onCloseFolder: { folder.close() },
+            onReload: { document.reload() },
+            onToggleTheme: { themeOverride = (effectiveTheme == .dark) ? .light : .dark },
+            onFindOpen: { findVisible = true },
+            onZoomIn: { setZoom(zoom + Pref.zoomStep) },
+            onZoomOut: { setZoom(zoom - Pref.zoomStep) },
+            onZoomReset: { setZoom(Pref.defaultZoom) },
+            onPrint: {
+                if let webView {
+                    PrintExport.print(webView: webView, title: document.displayTitle)
+                }
+            },
+            onExportPDF: {
+                if let webView {
+                    let stem = (document.currentURL?.deletingPathExtension().lastPathComponent) ?? "document"
+                    PrintExport.exportPDF(webView: webView, suggestedName: "\(stem).pdf")
+                }
+            },
+            onToggleTOC: { tocVisible.toggle() }
+        ))
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             guard let provider = providers.first else { return false }
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
@@ -161,6 +143,41 @@ struct MainWindow: View {
             backwards: backwards,
             nonce: findRequest.nonce &+ 1
         )
+    }
+}
+
+private struct NotificationBridge: ViewModifier {
+    let onOpenFile: (URL) -> Void
+    let onOpenFolder: (URL) -> Void
+    let onCloseFolder: () -> Void
+    let onReload: () -> Void
+    let onToggleTheme: () -> Void
+    let onFindOpen: () -> Void
+    let onZoomIn: () -> Void
+    let onZoomOut: () -> Void
+    let onZoomReset: () -> Void
+    let onPrint: () -> Void
+    let onExportPDF: () -> Void
+    let onToggleTOC: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onReceive(NotificationCenter.default.publisher(for: .rviewOpenFile)) { note in
+                if let url = note.object as? URL { onOpenFile(url) }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .rviewOpenFolder)) { note in
+                if let url = note.object as? URL { onOpenFolder(url) }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .rviewCloseFolder)) { _ in onCloseFolder() }
+            .onReceive(NotificationCenter.default.publisher(for: .rviewReload)) { _ in onReload() }
+            .onReceive(NotificationCenter.default.publisher(for: .rviewToggleTheme)) { _ in onToggleTheme() }
+            .onReceive(NotificationCenter.default.publisher(for: .rviewFindOpen)) { _ in onFindOpen() }
+            .onReceive(NotificationCenter.default.publisher(for: .rviewZoomIn)) { _ in onZoomIn() }
+            .onReceive(NotificationCenter.default.publisher(for: .rviewZoomOut)) { _ in onZoomOut() }
+            .onReceive(NotificationCenter.default.publisher(for: .rviewZoomReset)) { _ in onZoomReset() }
+            .onReceive(NotificationCenter.default.publisher(for: .rviewPrint)) { _ in onPrint() }
+            .onReceive(NotificationCenter.default.publisher(for: .rviewExportPDF)) { _ in onExportPDF() }
+            .onReceive(NotificationCenter.default.publisher(for: .rviewToggleTOC)) { _ in onToggleTOC() }
     }
 }
 
