@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static func post(url: URL) {
         var isDir: ObjCBool = false
         FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+        Task { @MainActor in RecentFilesStore.shared.add(url) }
         if isDir.boolValue {
             NotificationCenter.default.post(name: .peekOpenFolder, object: url)
         } else {
@@ -31,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url {
-            NotificationCenter.default.post(name: .peekOpenFolder, object: url)
+            Self.post(url: url)
         }
     }
 
