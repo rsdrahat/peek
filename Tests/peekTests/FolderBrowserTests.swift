@@ -1,5 +1,5 @@
 import XCTest
-@testable import rview
+@testable import peek
 
 @MainActor
 final class FolderBrowserTests: XCTestCase {
@@ -7,7 +7,7 @@ final class FolderBrowserTests: XCTestCase {
 
     override func setUp() async throws {
         tmp = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("rview-folder-tests-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("peek-folder-tests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
     }
 

@@ -1,5 +1,5 @@
 import XCTest
-@testable import rview
+@testable import peek
 
 final class ScrollStoreTests: XCTestCase {
     func testKeyIsStableForSamePath() {
@@ -22,7 +22,7 @@ final class ScrollStoreTests: XCTestCase {
 
     func testRoundtripInMemory() async {
         let store = ScrollStore.shared
-        let url = URL(fileURLWithPath: "/tmp/rview-scroll-test-\(UUID().uuidString).md")
+        let url = URL(fileURLWithPath: "/tmp/peek-scroll-test-\(UUID().uuidString).md")
         await store.setScrollY(1234.5, for: url)
         let y = await store.scrollY(for: url)
         XCTAssertEqual(y, 1234.5, accuracy: 0.0001)

@@ -17,9 +17,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var isDir: ObjCBool = false
         FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
         if isDir.boolValue {
-            NotificationCenter.default.post(name: .rviewOpenFolder, object: url)
+            NotificationCenter.default.post(name: .peekOpenFolder, object: url)
         } else {
-            NotificationCenter.default.post(name: .rviewOpenFile, object: url)
+            NotificationCenter.default.post(name: .peekOpenFile, object: url)
         }
     }
 
@@ -31,7 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url {
-            NotificationCenter.default.post(name: .rviewOpenFolder, object: url)
+            NotificationCenter.default.post(name: .peekOpenFolder, object: url)
         }
     }
 

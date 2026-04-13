@@ -2,26 +2,26 @@
 import PackageDescription
 
 let package = Package(
-    name: "rview",
+    name: "peek",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "rview", targets: ["rview"]),
+        .executable(name: "peek", targets: ["peek"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-markdown.git", from: "0.4.0"),
     ],
     targets: [
         .executableTarget(
-            name: "rview",
+            name: "peek",
             dependencies: [
                 .product(name: "Markdown", package: "swift-markdown"),
             ],
             resources: [.copy("Resources")]
         ),
         .testTarget(
-            name: "rviewTests",
+            name: "peekTests",
             dependencies: [
-                "rview",
+                "peek",
                 .product(name: "Markdown", package: "swift-markdown"),
             ]
         ),

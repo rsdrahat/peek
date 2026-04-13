@@ -17,7 +17,7 @@ actor ScrollStore {
             in: .userDomainMask,
             appropriateFor: nil,
             create: true
-        ).appendingPathComponent("rview", isDirectory: true) else { return nil }
+        ).appendingPathComponent("peek", isDirectory: true) else { return nil }
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent("scroll.json")
     }

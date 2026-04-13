@@ -1,0 +1,3 @@
+theme: null
+plugins: []
+include: [index.html, style.css]

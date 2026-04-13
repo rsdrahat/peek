@@ -1,65 +1,82 @@
-# rview
+# peek
 
-A light, native markdown viewer for macOS. Built on SwiftUI + WebKit.
+> markdown, natively.
 
-- **Light.** Single-digit MB binary. No Electron, no Chromium.
-- **Native.** WKWebView brings Cmd+F find, smooth scroll, accessibility, print, and real fullscreen for free.
-- **Beautiful.** Typographic defaults out of the box. Serif body, sans headings, tasteful dark mode.
-- **Fast to open.** Sub-300ms cold start on Apple Silicon.
+A light, native macOS markdown viewer. WebKit does the heavy lifting; the rest is just taste.
+
+```
+$ peek README.md
+$ peek ./docs
+```
+
+- **Tiny.** ~2 MB binary. No Electron, no Chromium, no Node.
+- **Native.** ⌘F, smooth scroll, print, VoiceOver, fullscreen — because it's all WebKit.
+- **Beautiful.** Serif body, sans headings, real vertical rhythm. Dark mode auto-switches.
+- **Fast.** Sub-300 ms cold start on Apple Silicon.
 
 ## Install
 
-Requires macOS 14+ (Sonoma) and Swift 5.9+.
+Requires macOS 14+ and Swift 5.9+.
 
 ```bash
-git clone https://github.com/rsdrahat/rview.git
-cd rview
+git clone https://github.com/rsdrahat/peek.git
+cd peek
 make app
-open .build/rview.app
+open .build/peek.app
 ```
 
-**First launch:** Because the app isn't notarized yet, Gatekeeper blocks it on double-click. Right-click the app → *Open* → *Open anyway*. You only need to do this once. Notarization is a post-1.0 concern.
+Symlink it for shell use:
 
-To invoke from the command line, symlink the binary:
 ```bash
-ln -s "$(pwd)/.build/rview.app/Contents/MacOS/rview" /usr/local/bin/rview
-rview README.md
+ln -s "$(pwd)/.build/peek.app/Contents/MacOS/peek" /usr/local/bin/peek
+peek README.md
 ```
+
+First launch is Gatekeeper-blocked (not notarized pre-1.0). Right-click → **Open** → **Open anyway**, once.
 
 ## Use
 
 ```bash
-rview README.md            # open a file
-open -a rview README.md    # via Finder
-# or drag a .md file onto the window
+peek README.md          # open a file
+peek ./docs             # open a folder — sidebar tree
+open -a peek file.md    # via Finder
+# or drag a .md file / folder onto the window
 ```
 
 ## Keys
 
 | Key | Action |
 |---|---|
-| ⌘O | Open file |
-| ⌘R | Reload |
-| ⌘F | Find in page |
-| ⌘⇧D | Toggle dark/light |
-| ⌃⌘F | Toggle fullscreen (system default) |
+| `⌘O` / `⌥⌘O` | Open file / open folder |
+| `⌘R` | Reload |
+| `⌘F` | Find in page |
+| `⌘⇧O` | Toggle outline (TOC) |
+| `⌘⇧D` | Toggle light/dark |
+| `⌘=` / `⌘-` / `⌘0` | Zoom in / out / reset |
+| `⌘P` / `⌘⇧E` | Print / export PDF |
+
+Vim-style sidebar nav: `j`/`k` move, `h`/`l` collapse/expand, `enter` open, `gg`/`G` top/bottom.
 
 ## Develop
 
 ```bash
 make build            # swift build -c release
-make test             # run the test suite
-make test-update      # regenerate fixture .expected.html after intentional changes
-make test-coverage    # coverage report (release)
-make app              # produce .build/rview.app
+make test             # tests
+make app              # .build/peek.app
 ```
 
-Fixtures live in `Tests/rviewTests/Fixtures/`. When markdown rendering changes intentionally, run `make test-update` and commit the new `.expected.html` files alongside the source change.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the stack rationale and project layout.
 
-## Status
+## Roadmap
 
-Pre-alpha. See [ROADMAP](https://github.com/rsdrahat/rview/issues).
+- **v0.1 MVP** — render, watch, theme, GFM, drag-drop ✅
+- **v0.2 Polish** — window state, scroll memory, zoom, print/export ✅
+- **v0.3 Folder mode** — sidebar tree, keyboard nav 🚧
+- **v0.4 Editor** — split view, live preview
+- **v0.5 Themes** — custom CSS, font presets
+
+[All issues →](https://github.com/rsdrahat/peek/issues)
 
 ## License
 
-MIT
+MIT.

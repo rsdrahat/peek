@@ -162,22 +162,22 @@ private struct NotificationBridge: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .onReceive(NotificationCenter.default.publisher(for: .rviewOpenFile)) { note in
+            .onReceive(NotificationCenter.default.publisher(for: .peekOpenFile)) { note in
                 if let url = note.object as? URL { onOpenFile(url) }
             }
-            .onReceive(NotificationCenter.default.publisher(for: .rviewOpenFolder)) { note in
+            .onReceive(NotificationCenter.default.publisher(for: .peekOpenFolder)) { note in
                 if let url = note.object as? URL { onOpenFolder(url) }
             }
-            .onReceive(NotificationCenter.default.publisher(for: .rviewCloseFolder)) { _ in onCloseFolder() }
-            .onReceive(NotificationCenter.default.publisher(for: .rviewReload)) { _ in onReload() }
-            .onReceive(NotificationCenter.default.publisher(for: .rviewToggleTheme)) { _ in onToggleTheme() }
-            .onReceive(NotificationCenter.default.publisher(for: .rviewFindOpen)) { _ in onFindOpen() }
-            .onReceive(NotificationCenter.default.publisher(for: .rviewZoomIn)) { _ in onZoomIn() }
-            .onReceive(NotificationCenter.default.publisher(for: .rviewZoomOut)) { _ in onZoomOut() }
-            .onReceive(NotificationCenter.default.publisher(for: .rviewZoomReset)) { _ in onZoomReset() }
-            .onReceive(NotificationCenter.default.publisher(for: .rviewPrint)) { _ in onPrint() }
-            .onReceive(NotificationCenter.default.publisher(for: .rviewExportPDF)) { _ in onExportPDF() }
-            .onReceive(NotificationCenter.default.publisher(for: .rviewToggleTOC)) { _ in onToggleTOC() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekCloseFolder)) { _ in onCloseFolder() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekReload)) { _ in onReload() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekToggleTheme)) { _ in onToggleTheme() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekFindOpen)) { _ in onFindOpen() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekZoomIn)) { _ in onZoomIn() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekZoomOut)) { _ in onZoomOut() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekZoomReset)) { _ in onZoomReset() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekPrint)) { _ in onPrint() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekExportPDF)) { _ in onExportPDF() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekToggleTOC)) { _ in onToggleTOC() }
     }
 }
 

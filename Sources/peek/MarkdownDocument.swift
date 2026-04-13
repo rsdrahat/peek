@@ -4,7 +4,7 @@ import Combine
 @MainActor
 final class MarkdownDocument: ObservableObject {
     @Published private(set) var html: String = welcomeHTML
-    @Published private(set) var displayTitle: String = "rview"
+    @Published private(set) var displayTitle: String = "peek"
     @Published private(set) var currentURL: URL?
     @Published private(set) var toc: [TOCEntry] = []
 
@@ -54,22 +54,22 @@ final class MarkdownDocument: ObservableObject {
 
     private static func missingFileHTML(url: URL) -> String {
         """
-        <div class="rview-error">
+        <div class="peek-error">
         <h1>File not found</h1>
         <p>The file has been moved or deleted.</p>
-        <p class="rview-error-path"><code>\(escape(url.path))</code></p>
-        <p class="rview-error-hint">Press <kbd>⌘R</kbd> to retry, or <kbd>⌘O</kbd> to open another file.</p>
+        <p class="peek-error-path"><code>\(escape(url.path))</code></p>
+        <p class="peek-error-hint">Press <kbd>⌘R</kbd> to retry, or <kbd>⌘O</kbd> to open another file.</p>
         </div>
         """
     }
 
     private static func readErrorHTML(url: URL, error: Error) -> String {
         """
-        <div class="rview-error">
+        <div class="peek-error">
         <h1>Failed to read file</h1>
-        <p class="rview-error-path"><code>\(escape(url.path))</code></p>
+        <p class="peek-error-path"><code>\(escape(url.path))</code></p>
         <pre>\(escape(error.localizedDescription))</pre>
-        <p class="rview-error-hint">Press <kbd>⌘R</kbd> to retry.</p>
+        <p class="peek-error-hint">Press <kbd>⌘R</kbd> to retry.</p>
         </div>
         """
     }
@@ -82,7 +82,7 @@ final class MarkdownDocument: ObservableObject {
 }
 
 private let welcomeHTML = """
-<h1>rview</h1>
+<h1>peek</h1>
 <p>A light, native markdown viewer for macOS.</p>
 <p>Open a file with <code>⌘O</code> or drop one onto the window.</p>
 """

@@ -1,5 +1,5 @@
 import XCTest
-@testable import rview
+@testable import peek
 
 /// Integration test for FileWatcher. Skipped under CI where fs events can be flaky.
 final class FileWatcherTests: XCTestCase {
@@ -8,7 +8,7 @@ final class FileWatcherTests: XCTestCase {
                       "FileWatcher integration test skipped on CI")
 
         let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("rview-watcher-\(UUID().uuidString).md")
+            .appendingPathComponent("peek-watcher-\(UUID().uuidString).md")
         try "initial".write(to: tmp, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: tmp) }
 

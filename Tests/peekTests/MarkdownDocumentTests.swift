@@ -1,5 +1,5 @@
 import XCTest
-@testable import rview
+@testable import peek
 
 @MainActor
 final class MarkdownDocumentTests: XCTestCase {
@@ -7,7 +7,7 @@ final class MarkdownDocumentTests: XCTestCase {
 
     override func setUp() async throws {
         tmp = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("rview-doc-tests-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("peek-doc-tests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
     }
 

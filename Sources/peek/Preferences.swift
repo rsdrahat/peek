@@ -3,7 +3,7 @@ import Foundation
 /// Small wrapper around UserDefaults for app-wide preferences.
 /// Keys are strongly typed; defaults defined here.
 enum Pref {
-    static let zoomKey = "rview.zoom"
+    static let zoomKey = "peek.zoom"
     static let defaultZoom: Double = 1.0
     static let zoomMin: Double = 0.6
     static let zoomMax: Double = 2.5
