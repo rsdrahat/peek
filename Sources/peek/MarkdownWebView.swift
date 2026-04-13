@@ -10,6 +10,7 @@ struct MarkdownWebView: NSViewRepresentable {
     var fileURL: URL? = nil
     var onFindResult: (Bool) -> Void = { _ in }
     var onWebViewReady: (WKWebView) -> Void = { _ in }
+    var onInternalLink: (URL) -> Void = { _ in }
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -22,12 +23,14 @@ struct MarkdownWebView: NSViewRepresentable {
         view.setValue(false, forKey: "drawsBackground")
         view.navigationDelegate = context.coordinator
         context.coordinator.webView = view
+        context.coordinator.onInternalLink = onInternalLink
         onWebViewReady(view)
         return view
     }
 
     func updateNSView(_ view: WKWebView, context: Context) {
         let coord = context.coordinator
+        coord.onInternalLink = onInternalLink
         let bodyChanged = coord.lastBody != html
         let themeChanged = coord.lastTheme != theme
         let baseChanged = coord.lastBaseURL != baseURL
@@ -86,12 +89,18 @@ struct MarkdownWebView: NSViewRepresentable {
         var lastBaseURL: URL?
         var lastFileURL: URL?
         var pendingFileURL: URL?
+        var onInternalLink: (URL) -> Void = { _ in }
 
         func webView(_ webView: WKWebView,
                      decidePolicyFor nav: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard let url = nav.request.url, nav.navigationType == .linkActivated else {
                 decisionHandler(.allow); return
+            }
+            if MarkdownWebView.isInternalMarkdownLink(url) {
+                onInternalLink(url.standardizedFileURL)
+                decisionHandler(.cancel)
+                return
             }
             NSWorkspace.shared.open(url)
             decisionHandler(.cancel)
@@ -149,6 +158,12 @@ struct MarkdownWebView: NSViewRepresentable {
         </body>
         </html>
         """
+    }
+
+    static func isInternalMarkdownLink(_ url: URL) -> Bool {
+        guard url.isFileURL else { return false }
+        let ext = url.pathExtension.lowercased()
+        return ext == "md" || ext == "markdown" || ext == "mdown"
     }
 
     private static func loadResource(_ name: String) -> String {
