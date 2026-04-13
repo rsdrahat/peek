@@ -5,7 +5,7 @@ BUILD_DIR     := .build
 APP_BUNDLE    := $(BUILD_DIR)/$(APP_NAME).app
 BIN_PATH      := $(BUILD_DIR)/$(CONFIG)/$(APP_NAME)
 
-.PHONY: all build run app clean test test-update test-coverage fmt icon
+.PHONY: all build run app clean test test-update test-coverage fmt icon zip
 
 all: app
 
@@ -46,9 +46,14 @@ app: build
 icon:
 	swift scripts/generate-icon.swift
 
+zip: app
+	ditto -c -k --keepParent $(APP_BUNDLE) $(BUILD_DIR)/$(APP_NAME).zip
+	shasum -a 256 $(BUILD_DIR)/$(APP_NAME).zip | tee $(BUILD_DIR)/$(APP_NAME).zip.sha256
+	@echo "Built $(BUILD_DIR)/$(APP_NAME).zip (unsigned — CI signs + notarizes on tag push)"
+
 clean:
 	swift package clean
-	rm -rf $(BUILD_DIR)/$(APP_NAME).app
+	rm -rf $(BUILD_DIR)/$(APP_NAME).app $(BUILD_DIR)/$(APP_NAME).zip $(BUILD_DIR)/$(APP_NAME).zip.sha256
 
 fmt:
 	swift format --in-place --recursive Sources Tests

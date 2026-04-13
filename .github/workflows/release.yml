@@ -1,0 +1,151 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, sign, notarize, publish
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    env:
+      APP_NAME: peek
+      VERSION: ${{ github.ref_name }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/Library/Developer/Xcode/DerivedData
+          key: spm-release-peek-${{ runner.os }}-${{ hashFiles('Package.resolved', 'Package.swift') }}
+          restore-keys: spm-release-peek-${{ runner.os }}-
+
+      - name: Import Developer ID certificate into temporary keychain
+        env:
+          CERT_P12_BASE64: ${{ secrets.APPLE_DEV_ID_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.APPLE_DEV_ID_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          CERT_PATH="$RUNNER_TEMP/dev-id.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          echo "$CERT_P12_BASE64" | base64 --decode -o "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed -e s/\"//g)
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          rm -f "$CERT_PATH"
+          # Expose the identity name (e.g. "Developer ID Application: Foo (TEAMID)")
+          # so later steps can reference it.
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | awk -F\" '/Developer ID Application/ {print $2; exit}')
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::No Developer ID Application identity found in keychain"
+            exit 1
+          fi
+          echo "SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
+      - name: Stamp Info.plist version from tag
+        run: |
+          set -euo pipefail
+          # Strip leading "v" for CFBundleShortVersionString (0.3.0 not v0.3.0)
+          SHORT_VERSION="${VERSION#v}"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $SHORT_VERSION" Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $GITHUB_RUN_NUMBER" Info.plist
+          echo "Stamped CFBundleShortVersionString=$SHORT_VERSION CFBundleVersion=$GITHUB_RUN_NUMBER"
+
+      - name: Build release (arm64)
+        run: swift build -c release --arch arm64
+
+      - name: Assemble .app bundle
+        run: make app
+
+      - name: Codesign with hardened runtime
+        run: |
+          set -euo pipefail
+          codesign --force --options runtime \
+            --entitlements peek.entitlements \
+            --sign "$SIGNING_IDENTITY" \
+            --timestamp \
+            --deep \
+            .build/peek.app
+          codesign --verify --deep --strict --verbose=2 .build/peek.app
+
+      - name: Zip for notarization
+        run: ditto -c -k --keepParent .build/peek.app "$RUNNER_TEMP/peek-notary.zip"
+
+      - name: Submit to notarytool and wait
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          xcrun notarytool submit "$RUNNER_TEMP/peek-notary.zip" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+      - name: Staple notarization ticket
+        run: xcrun stapler staple .build/peek.app
+
+      - name: Zip stapled bundle for release
+        id: zip
+        run: |
+          set -euo pipefail
+          ZIP_NAME="peek-${VERSION}.zip"
+          ditto -c -k --keepParent .build/peek.app "$ZIP_NAME"
+          shasum -a 256 "$ZIP_NAME" | tee "${ZIP_NAME}.sha256"
+          echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Verify Gatekeeper acceptance
+        run: spctl -a -vvv --type execute .build/peek.app
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          set -euo pipefail
+          PREV=$(git describe --tags --abbrev=0 "${VERSION}^" 2>/dev/null || true)
+          if [ -n "$PREV" ]; then
+            echo "## Changes since $PREV" > notes.md
+            git log --pretty=format:"- %s" "$PREV..$VERSION" >> notes.md
+          else
+            echo "## First release" > notes.md
+            git log --pretty=format:"- %s" "$VERSION" | head -50 >> notes.md
+          fi
+          echo "" >> notes.md
+          echo "**SHA256**: \`$(cut -d' ' -f1 "${{ steps.zip.outputs.zip_name }}.sha256")\`" >> notes.md
+          echo "**macOS**: 14+ · **Arch**: arm64 · **Signed + notarized**." >> notes.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$VERSION" \
+            "${{ steps.zip.outputs.zip_name }}" \
+            "${{ steps.zip.outputs.zip_name }}.sha256" \
+            --title "peek $VERSION" \
+            --notes-file notes.md
+
+      - name: Cleanup keychain
+        if: always()
+        run: security delete-keychain "$KEYCHAIN_PATH" || true
