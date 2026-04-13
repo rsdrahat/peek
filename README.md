@@ -2,21 +2,25 @@
 
 > markdown, natively.
 
-A light, native macOS markdown viewer. WebKit does the heavy lifting; the rest is just taste.
+**Agents don't read .docx. Neither should you.**
 
-```
-$ peek README.md
-$ peek ./docs
-```
+.docx was built for humans writing for other humans. Markdown is what every LLM writes, every agent parses, every codebase ships. peek is the view layer for that world — **light, native, beautiful**.
 
-- **Tiny.** ~2 MB binary. No Electron, no Chromium, no Node.
-- **Native.** ⌘F, smooth scroll, print, VoiceOver, fullscreen — because it's all WebKit.
-- **Beautiful.** Serif body, sans headings, real vertical rhythm. Dark mode auto-switches.
-- **Fast.** Sub-300 ms cold start on Apple Silicon.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rsdrahat/peek/main/docs/assets/screenshot-hero.png" alt="peek rendering a markdown document with the folder sidebar, table of contents, and breadcrumb bar visible" width="820">
+</p>
 
-## Install
+## Download
 
-Requires macOS 14+ and Swift 5.9+.
+**[Download peek for macOS →](https://github.com/rsdrahat/peek/releases/latest)**
+
+Unzip, drop `peek.app` into `/Applications`. macOS 14+, Apple Silicon. First launch is Gatekeeper-blocked pre-notarization — right-click → **Open** → **Open anyway**, once.
+
+No release yet? Build from source below.
+
+## Build from source
+
+Requires Swift 5.9+.
 
 ```bash
 git clone https://github.com/rsdrahat/peek.git
@@ -25,14 +29,18 @@ make app
 open .build/peek.app
 ```
 
-Symlink it for shell use:
+Symlink for shell use:
 
 ```bash
 ln -s "$(pwd)/.build/peek.app/Contents/MacOS/peek" /usr/local/bin/peek
 peek README.md
 ```
 
-First launch is Gatekeeper-blocked (not notarized pre-1.0). Right-click → **Open** → **Open anyway**, once.
+## Why peek
+
+- **Light.** Single-digit megabytes. Sub-300 ms cold start. No Electron, no Chromium, no Node.
+- **Native.** Real `NSWindow`, real `⌘`-bindings, real Retina text rendering. `⌘F`, print, smooth scroll, VoiceOver, fullscreen — delegated to WebKit, not reinvented.
+- **Beautiful.** Serif body, sans headings, real vertical rhythm. Auto light/dark. Typography tuned for reading, not editing.
 
 ## Use
 
@@ -71,7 +79,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the stack rationale and project layou
 
 - **v0.1 MVP** — render, watch, theme, GFM, drag-drop ✅
 - **v0.2 Polish** — window state, scroll memory, zoom, print/export ✅
-- **v0.3 Folder mode** — sidebar tree, keyboard nav 🚧
+- **v0.3 Folder mode** — sidebar tree, vim nav, breadcrumb, inter-doc links, Open Recent ✅
 - **v0.4 Editor** — split view, live preview
 - **v0.5 Themes** — custom CSS, font presets
 
