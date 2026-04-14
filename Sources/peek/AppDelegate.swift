@@ -2,14 +2,30 @@ import AppKit
 import UniformTypeIdentifiers
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private static var pendingURL: URL?
+    private static var didFinishLaunching = false
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if let url = Self.fileURL(fromArgs: CommandLine.arguments) {
-            Self.post(url: url)
+        Self.didFinishLaunching = true
+        let url = Self.pendingURL ?? Self.fileURL(fromArgs: CommandLine.arguments)
+        Self.pendingURL = nil
+        if let url {
+            // Defer one runloop tick so SwiftUI views have registered their
+            // NotificationCenter observers before we post.
+            DispatchQueue.main.async { Self.post(url: url) }
         }
     }
 
     func application(_ sender: NSApplication, openFile filename: String) -> Bool {
-        Self.post(url: URL(fileURLWithPath: filename))
+        let url = URL(fileURLWithPath: filename)
+        if Self.didFinishLaunching {
+            Self.post(url: url)
+        } else {
+            // Launch Services can deliver this before applicationDidFinishLaunching
+            // when the app is cold-started to open a file. Buffer until observers
+            // are wired up.
+            Self.pendingURL = url
+        }
         return true
     }
 
