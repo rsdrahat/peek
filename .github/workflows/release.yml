@@ -186,6 +186,27 @@ jobs:
             --title "peek $VERSION" \
             --notes-file notes.md
 
+      - name: Dispatch tap bump to rsdrahat/homebrew-peek
+        # Optional — runs only when HOMEBREW_TAP_TOKEN is set. A missing
+        # token just delays the cask bump (the tap has its own fallback
+        # paths: manual workflow_dispatch and, once added, a cron poll).
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          SHORT_VERSION: ${{ env.VERSION }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "HOMEBREW_TAP_TOKEN not set; skipping tap dispatch."
+            exit 0
+          fi
+          SHA=$(cut -d' ' -f1 "${{ steps.zip.outputs.zip_name }}.sha256")
+          gh api repos/rsdrahat/homebrew-peek/dispatches \
+            -X POST \
+            -f event_type=peek-released \
+            -F client_payload[version]="${SHORT_VERSION#v}" \
+            -F client_payload[sha256]="$SHA"
+          echo "Dispatched peek-released to rsdrahat/homebrew-peek."
+
       - name: Cleanup keychain
         if: always()
         run: security delete-keychain "$KEYCHAIN_PATH" || true
