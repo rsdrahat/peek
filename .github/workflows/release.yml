@@ -60,13 +60,27 @@ jobs:
           security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed -e s/\"//g)
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           rm -f "$CERT_PATH"
-          # Expose the identity name (e.g. "Developer ID Application: Foo (TEAMID)")
-          # so later steps can reference it.
-          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | awk -F\" '/Developer ID Application/ {print $2; exit}')
+          # The keychain we just created is isolated and contains a single
+          # imported identity, so grab the first valid codesigning identity
+          # rather than filtering by name (which varies: "Developer ID
+          # Application: …", "Apple Distribution: …", etc.).
+          echo "::group::All identities in build keychain"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
+          echo "::endgroup::"
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
+            | awk -F\" '/^[[:space:]]+[0-9]+\)/ {print $2; exit}')
           if [ -z "$IDENTITY" ]; then
-            echo "::error::No Developer ID Application identity found in keychain"
+            echo "::error::No valid codesigning identity in keychain after import"
+            echo "Full find-identity (all policies):"
+            security find-identity -v "$KEYCHAIN_PATH" || true
             exit 1
           fi
+          case "$IDENTITY" in
+            "Developer ID Application"*) ;;
+            *)
+              echo "::warning::Identity \"$IDENTITY\" is not Developer ID Application; notarization will reject. Continuing so you can see the codesign step output, but the release will fail downstream."
+              ;;
+          esac
           echo "SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
 
