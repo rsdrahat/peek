@@ -43,7 +43,7 @@ struct MarkdownWebView: NSViewRepresentable {
 
         if bodyChanged || baseChanged || fileChanged || coord.lastBody == nil {
             coord.pendingFileURL = fileURL
-            let effectiveBase = baseURL ?? Bundle.module.resourceURL
+            let effectiveBase = baseURL ?? PeekResources.bundle.resourceURL
             view.loadHTMLString(Self.shell(body: html, theme: theme),
                                 baseURL: effectiveBase)
             coord.lastBaseURL = baseURL
@@ -167,7 +167,7 @@ struct MarkdownWebView: NSViewRepresentable {
     }
 
     private static func loadResource(_ name: String) -> String {
-        let url = Bundle.module.url(forResource: "Resources/\(name)", withExtension: nil)
+        let url = PeekResources.bundle.url(forResource: "Resources/\(name)", withExtension: nil)
         return (url.flatMap { try? String(contentsOf: $0) }) ?? ""
     }
 }
