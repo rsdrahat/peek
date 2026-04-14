@@ -35,6 +35,8 @@ app: build
 	mkdir -p $(APP_BUNDLE)/Contents/MacOS
 	mkdir -p $(APP_BUNDLE)/Contents/Resources
 	cp $(BIN_PATH) $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
+	cp scripts/peek-cli.sh $(APP_BUNDLE)/Contents/MacOS/peek-cli
+	chmod +x $(APP_BUNDLE)/Contents/MacOS/peek-cli
 	cp Info.plist $(APP_BUNDLE)/Contents/Info.plist
 	cp assets/AppIcon.icns $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
 	# SwiftPM places resources in a .bundle next to the binary; copy it in.
