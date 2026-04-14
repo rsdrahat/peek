@@ -3,20 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>peek — markdown, natively.</title>
-<meta name="description" content="A light, native macOS markdown viewer. ~2 MB binary, sub-300 ms cold start, WebKit-native typography.">
-<meta property="og:title" content="peek — markdown, natively.">
-<meta property="og:description" content="A light, native macOS markdown viewer.">
+<title>peek — agents don't read .docx. neither should you.</title>
+<meta name="description" content="A light, native macOS markdown viewer. ~2 MB binary, sub-300 ms cold start, WebKit-native typography. Signed + notarized.">
+<meta property="og:title" content="peek — agents don't read .docx. neither should you.">
+<meta property="og:description" content="A light, native macOS markdown viewer. Signed + notarized.">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='52' font-family='ui-serif,Georgia,serif'%3Ep%3C/text%3E%3C/svg%3E">
+<meta property="og:image" content="https://raw.githubusercontent.com/rsdrahat/peek/main/docs/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='12' fill='%23f5c06a'/%3E%3Ctext x='32' y='50' text-anchor='middle' font-family='Georgia,serif' font-weight='bold' font-size='46' fill='%231c1c1e'%3Ep%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main>
   <header>
     <h1><span class="glyph">p.</span><span class="name">peek</span></h1>
-    <p class="tagline">markdown, <em>natively</em>.</p>
     <p class="motivation">Agents don't read <code>.docx</code>. Neither should you.</p>
+    <p class="tagline">markdown, <em>natively</em>.</p>
   </header>
 
   <section class="pitch">
@@ -25,31 +29,16 @@
     <p class="lede">A light, native macOS markdown viewer. <strong>~2 MB</strong> binary, sub-<strong>300 ms</strong> cold start, WebKit-native typography. Nothing Electron touched.</p>
     <p class="cta">
       <a class="download" href="https://github.com/rsdrahat/peek/releases/latest">Download for macOS</a>
-      <span class="cta-meta">arm64 · macOS 14+ · signed + notarized</span>
+      <span class="badge">v0.3.0</span>
     </p>
-    <p class="brew">
-      <span>or</span>
-      <code>brew install --cask rsdrahat/peek/peek</code>
-    </p>
-  </section>
-
-  <section class="shot">
-    <img src="assets/screenshot-hero.png" alt="peek rendering a markdown document with the folder sidebar, table of contents, and breadcrumb bar visible" loading="lazy">
+    <p class="brew"><code>brew install --cask rsdrahat/peek/peek</code></p>
+    <p class="cta-meta">Apple Silicon · macOS 14+ · signed &amp; notarized</p>
   </section>
 
   <section class="features">
     <div><h3>Tiny</h3><p>Single-digit megabytes. No Chromium, no Node, no runtime.</p></div>
     <div><h3>Native</h3><p>⌘F, print, smooth scroll, VoiceOver — delegated to WebKit.</p></div>
     <div><h3>Beautiful</h3><p>Serif body, sans headings, real vertical rhythm. Auto dark mode.</p></div>
-  </section>
-
-  <section class="install">
-    <h2>Install</h2>
-    <pre><code>git clone https://github.com/rsdrahat/peek.git
-cd peek
-make app
-open .build/peek.app</code></pre>
-    <p class="meta">macOS 14+, Swift 5.9+. Not notarized pre-1.0 — right-click → Open, once.</p>
   </section>
 
   <section class="keys">
@@ -71,8 +60,8 @@ open .build/peek.app</code></pre>
     <ol>
       <li><span class="tag done">shipped</span> <strong>v0.1 MVP</strong> — render, watch, theme, GFM, drag-drop</li>
       <li><span class="tag done">shipped</span> <strong>v0.2 Polish</strong> — window/scroll memory, zoom, print, export</li>
-      <li><span class="tag wip">in progress</span> <strong>v0.3 Folder mode</strong> — sidebar tree, vim nav, breadcrumb, inter-doc links</li>
-      <li><span class="tag next">next</span> <strong>v0.4 Editor</strong> — split view, live preview</li>
+      <li><span class="tag done">shipped</span> <strong>v0.3 Folder mode</strong> — sidebar tree, vim nav, breadcrumb, inter-doc links, recents</li>
+      <li><span class="tag wip">next</span> <strong>v0.4 Editor</strong> — split view, live preview</li>
       <li><span class="tag next">later</span> <strong>v0.5 Themes</strong> — presets, custom CSS, fonts</li>
     </ol>
   </section>

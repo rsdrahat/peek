@@ -29,7 +29,7 @@ main {
   padding: 96px 32px 64px;
 }
 
-header { margin-bottom: 64px; }
+header { margin-bottom: 56px; }
 
 h1 {
   font-family: var(--sans);
@@ -52,37 +52,56 @@ h1 {
 
 .name { font-weight: 600; }
 
+/* Hero hierarchy: motivation first (primary), tagline as the softer label. */
+.motivation {
+  font-family: var(--sans);
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 32px 0 0 0;
+  max-width: 20ch;
+}
+.motivation code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  color: var(--accent);
+  background: none;
+  padding: 0;
+  font-weight: 500;
+}
+
 .tagline {
   font-family: var(--serif);
-  font-size: 22px;
+  font-size: 17px;
   color: var(--mute);
-  margin: 12px 0 0 0;
+  margin: 18px 0 0 0;
   font-style: italic;
 }
 .tagline em { color: var(--fg); font-style: italic; }
 
-.motivation {
-  font-family: var(--sans);
-  font-size: 20px;
-  font-weight: 500;
-  color: var(--fg);
-  letter-spacing: -0.01em;
-  line-height: 1.35;
-  margin: 28px 0 0 0;
-  max-width: 28ch;
-}
-.motivation code {
-  font-size: 0.92em;
-  color: var(--accent);
-  background: none;
-  padding: 0;
+section { margin: 48px 0; }
+
+.pitch pre {
+  margin: 0 0 24px 0;
+  font-size: 15px;
 }
 
+.lede {
+  font-size: 21px;
+  line-height: 1.5;
+  color: var(--fg);
+  margin: 0;
+}
+.lede strong { color: var(--accent); font-weight: 500; }
+
+/* CTA stack: download + version badge, then brew, then meta. */
 .cta {
   margin: 28px 0 0 0;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 .download {
@@ -99,18 +118,21 @@ h1 {
   transition: transform 120ms ease, filter 120ms ease;
 }
 .download:hover { filter: brightness(1.08); transform: translateY(-1px); }
-.cta-meta {
+
+.badge {
   font-family: var(--mono);
   font-size: 12px;
-  color: var(--mute);
-  letter-spacing: 0.04em;
+  font-weight: 500;
+  color: var(--accent);
+  background: rgba(245, 192, 106, 0.12);
+  border: 1px solid rgba(245, 192, 106, 0.28);
+  padding: 4px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
 }
 
 .brew {
-  margin: 12px 0 0 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  margin: 14px 0 0 0;
   font-family: var(--sans);
   font-size: 13px;
   color: var(--mute);
@@ -122,36 +144,17 @@ h1 {
   background: var(--code-bg);
   border: 1px solid var(--line);
   border-radius: 4px;
-  padding: 4px 10px;
+  padding: 5px 10px;
   user-select: all;
 }
 
-.shot {
-  margin: 48px 0;
+.cta-meta {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--mute);
+  letter-spacing: 0.04em;
+  margin: 14px 0 0 0;
 }
-.shot img {
-  width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--code-bg);
-}
-
-section { margin: 48px 0; }
-
-.pitch pre {
-  margin: 0 0 24px 0;
-  font-size: 15px;
-}
-
-.lede {
-  font-size: 21px;
-  line-height: 1.5;
-  color: var(--fg);
-  margin: 0;
-}
-.lede strong { color: var(--accent); font-weight: 500; }
 
 pre, code { font-family: var(--mono); }
 
@@ -196,12 +199,6 @@ h3 {
   font-size: 15px;
   margin: 0;
   line-height: 1.5;
-}
-
-.meta {
-  color: var(--mute);
-  font-size: 14px;
-  margin-top: 12px;
 }
 
 table {
@@ -274,6 +271,7 @@ footer a:hover { color: var(--accent); border-bottom-color: var(--accent); }
 @media (max-width: 640px) {
   main { padding: 48px 20px; }
   h1 { font-size: 56px; }
+  .motivation { font-size: 24px; }
   .features { grid-template-columns: 1fr; gap: 20px; }
   table th { width: 110px; font-size: 12px; }
 }
@@ -286,6 +284,10 @@ footer a:hover { color: var(--accent); border-bottom-color: var(--accent); }
     --line: #e8e4dc;
     --accent: #b8721f;
     --code-bg: #f4f1ea;
+  }
+  .badge {
+    background: rgba(184, 114, 31, 0.10);
+    border-color: rgba(184, 114, 31, 0.32);
   }
   .tag.done { background: #e4efe0; color: #386a38; }
   .tag.wip  { background: #f3e6cc; color: #8a5410; }
