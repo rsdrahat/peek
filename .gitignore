@@ -5,3 +5,9 @@ Packages/
 DerivedData/
 .DS_Store
 *.app
+
+# Signing material — NEVER commit. Keys live only in GitHub Actions secrets.
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision

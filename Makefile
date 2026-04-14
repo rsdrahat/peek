@@ -5,7 +5,7 @@ BUILD_DIR     := .build
 APP_BUNDLE    := $(BUILD_DIR)/$(APP_NAME).app
 BIN_PATH      := $(BUILD_DIR)/$(CONFIG)/$(APP_NAME)
 
-.PHONY: all build run app clean test test-update test-coverage fmt icon zip
+.PHONY: all build run app clean test test-update test-coverage fmt icon og zip
 
 all: app
 
@@ -45,6 +45,9 @@ app: build
 
 icon:
 	swift scripts/generate-icon.swift
+
+og:
+	swift scripts/generate-og.swift
 
 zip: app
 	ditto -c -k --keepParent $(APP_BUNDLE) $(BUILD_DIR)/$(APP_NAME).zip
