@@ -120,11 +120,30 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          xcrun notarytool submit "$RUNNER_TEMP/peek-notary.zip" \
+          # notarytool --wait exits 0 on any terminal state including
+          # "Invalid". Parse the output and fail explicitly on anything
+          # that isn't "Accepted" so the failure surfaces here, not three
+          # steps later in the stapler with a cryptic "Record not found".
+          OUTPUT=$(xcrun notarytool submit "$RUNNER_TEMP/peek-notary.zip" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_ID_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
-            --wait
+            --wait 2>&1)
+          echo "$OUTPUT"
+          STATUS=$(printf '%s\n' "$OUTPUT" | awk '/^[[:space:]]*status:/ {print $2; exit}')
+          SUBMISSION_ID=$(printf '%s\n' "$OUTPUT" | awk '/^[[:space:]]*id:/ {print $2; exit}')
+          if [ "$STATUS" != "Accepted" ]; then
+            echo "::error::Notarization failed with status: $STATUS"
+            if [ -n "${SUBMISSION_ID:-}" ]; then
+              echo "::group::Apple notary log for $SUBMISSION_ID"
+              xcrun notarytool log "$SUBMISSION_ID" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_ID_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID" || true
+              echo "::endgroup::"
+            fi
+            exit 1
+          fi
 
       - name: Staple notarization ticket
         run: xcrun stapler staple .build/peek.app
