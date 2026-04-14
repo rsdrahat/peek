@@ -10,11 +10,15 @@
   <img src="https://raw.githubusercontent.com/rsdrahat/peek/main/docs/assets/screenshot-hero.png" alt="peek rendering a markdown document with the folder sidebar, table of contents, and breadcrumb bar visible" width="820">
 </p>
 
-## Download
+## Install
 
-**[Download peek for macOS →](https://github.com/rsdrahat/peek/releases/latest)**
+```bash
+brew install --cask rsdrahat/peek/peek
+```
 
-Unzip, drop `peek.app` into `/Applications`. Apple Silicon · macOS 14+ · signed + notarized.
+Or grab the zip directly: **[latest release →](https://github.com/rsdrahat/peek/releases/latest)**. Unzip, drop `peek.app` into `/Applications`.
+
+Apple Silicon · macOS 14+ · signed + notarized.
 
 ## Build from source
 
