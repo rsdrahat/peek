@@ -14,9 +14,7 @@
 
 **[Download peek for macOS →](https://github.com/rsdrahat/peek/releases/latest)**
 
-Unzip, drop `peek.app` into `/Applications`. macOS 14+, Apple Silicon. First launch is Gatekeeper-blocked pre-notarization — right-click → **Open** → **Open anyway**, once.
-
-No release yet? Build from source below.
+Unzip, drop `peek.app` into `/Applications`. Apple Silicon · macOS 14+ · signed + notarized.
 
 ## Build from source
 
