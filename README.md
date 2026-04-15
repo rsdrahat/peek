@@ -1,10 +1,10 @@
 # peek
 
-> markdown, natively.
+> the reader markdown has been missing.
 
-**Agents don't read .docx. Neither should you.**
+Markdown is how software talks to itself now. Every model writes it, every agent parses it, every prompt, spec, and README lives in it — it's the interchange format of the AI stack. And yet in 2026, opening a `.md` file still means an editor with a blinking cursor or a 150 MB browser tab.
 
-.docx was built for humans writing for other humans. Markdown is what every LLM writes, every agent parses, every codebase ships. peek is the view layer for that world — **light, native, beautiful**.
+peek is a reader. Just a reader. **Light, native, beautiful.**
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/rsdrahat/peek/main/docs/assets/screenshot-hero.png" alt="peek rendering a markdown document with the folder sidebar, table of contents, and breadcrumb bar visible" width="820">
