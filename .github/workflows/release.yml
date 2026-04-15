@@ -120,16 +120,24 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          # notarytool --wait exits 0 on any terminal state including
-          # "Invalid". Parse the output and fail explicitly on anything
-          # that isn't "Accepted" so the failure surfaces here, not three
-          # steps later in the stapler with a cryptic "Record not found".
+          # notarytool --wait exits 0 on terminal state "Accepted" but
+          # nonzero on auth / upload errors. Capture both stdout+stderr
+          # and the exit code without letting `set -e` swallow them.
+          set +e
           OUTPUT=$(xcrun notarytool submit "$RUNNER_TEMP/peek-notary.zip" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_ID_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
             --wait 2>&1)
+          NOTARY_RC=$?
+          set -e
+          echo "----- notarytool output (rc=$NOTARY_RC) -----"
           echo "$OUTPUT"
+          echo "----- end notarytool output -----"
+          if [ "$NOTARY_RC" -ne 0 ] && ! printf '%s\n' "$OUTPUT" | grep -q "^[[:space:]]*status:"; then
+            echo "::error::notarytool failed before reaching a terminal state (rc=$NOTARY_RC) — usually auth or upload. See output above."
+            exit 1
+          fi
           STATUS=$(printf '%s\n' "$OUTPUT" | awk '/^[[:space:]]*status:/ {print $2; exit}')
           SUBMISSION_ID=$(printf '%s\n' "$OUTPUT" | awk '/^[[:space:]]*id:/ {print $2; exit}')
           if [ "$STATUS" != "Accepted" ]; then
