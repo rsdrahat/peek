@@ -8,7 +8,7 @@
   <key>CFBundleExecutable</key><string>peek</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.3.0</string>
+  <key>CFBundleShortVersionString</key><string>0.3.4</string>
   <key>CFBundleVersion</key><string>1</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>NSHighResolutionCapable</key><true/>
@@ -23,6 +23,19 @@
       <array>
         <string>net.daringfireball.markdown</string>
         <string>public.plain-text</string>
+      </array>
+    </dict>
+    <dict>
+      <!-- Required so `open -a peek <dir>` (the CLI shim path) routes folder
+           args into application:openFile:. LSHandlerRank=None means peek
+           handles the type but is not advertised as a folder handler in
+           Finder's Open With menu. -->
+      <key>CFBundleTypeName</key><string>Folder</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>None</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>public.folder</string>
       </array>
     </dict>
   </array>
