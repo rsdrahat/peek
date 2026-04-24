@@ -40,12 +40,22 @@ struct MainWindow: View {
         .animation(.easeInOut(duration: 0.15), value: tocVisible)
         .animation(.easeInOut(duration: 0.15), value: folder.root)
         .onAppear {
-            // Drain any launch-time URL buffered by AppDelegate. By now the
-            // NotificationBridge's .onReceive subscribers below are live, so
-            // re-posting here routes through the same dir/file branching as
-            // warm opens.
+            // Drain any launch-time URL buffered by AppDelegate. We open
+            // `document` / `folder` directly rather than posting a
+            // NotificationCenter event: the .onReceive subscribers live on
+            // `contentBody` (a grandchild view), and SwiftUI does not
+            // guarantee those subscribers are attached before this .onAppear
+            // on the root body fires. On macOS 26.3 the race reliably loses
+            // and the notification is swallowed. Direct calls sidestep it.
             if let url = AppDelegate.consumePendingURL() {
-                AppDelegate.post(url: url)
+                var isDir: ObjCBool = false
+                FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+                RecentFilesStore.shared.add(url)
+                if isDir.boolValue {
+                    folder.open(rootURL: url)
+                } else {
+                    document.open(url: url)
+                }
             }
         }
     }
