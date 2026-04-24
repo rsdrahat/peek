@@ -2,31 +2,56 @@ import AppKit
 import UniformTypeIdentifiers
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private static var pendingURL: URL?
-    private static var didFinishLaunching = false
+    // Buffered launch-time URL. Populated by `application:openFile:` (delivered
+    // by Launch Services before `applicationDidFinishLaunching`) or falls back
+    // to argv. Drained by `MainWindow.onAppear` via `consumePendingURL()`.
+    //
+    // Why not post via NotificationCenter at launch: SwiftUI's WindowGroup does
+    // not reliably materialize the root view — and therefore register its
+    // `.onReceive(.peekOpenFile)` subscriber — within one runloop tick of
+    // `applicationDidFinishLaunching`. On some machines the notification fired
+    // before there was anyone to receive it, and the window sat on the welcome
+    // HTML. Buffer + pull eliminates the race.
+    static var pendingURL: URL?
+    static var didFinishLaunching = false
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        Self.didFinishLaunching = true
-        let url = Self.pendingURL ?? Self.fileURL(fromArgs: CommandLine.arguments)
-        Self.pendingURL = nil
-        if let url {
-            // Defer one runloop tick so SwiftUI views have registered their
-            // NotificationCenter observers before we post.
-            DispatchQueue.main.async { Self.post(url: url) }
+    static func consumePendingURL() -> URL? {
+        defer { pendingURL = nil }
+        return pendingURL
+    }
+
+    /// Testable core of `applicationDidFinishLaunching`.
+    static func handleDidFinishLaunching(args: [String] = CommandLine.arguments) {
+        didFinishLaunching = true
+        if pendingURL == nil {
+            pendingURL = fileURL(fromArgs: args)
         }
     }
 
-    func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+    /// Testable core of `application(_:openFile:)`.
+    @discardableResult
+    static func handleOpenFile(_ filename: String) -> Bool {
         let url = URL(fileURLWithPath: filename)
-        if Self.didFinishLaunching {
-            Self.post(url: url)
+        if didFinishLaunching {
+            post(url: url)
         } else {
-            // Launch Services can deliver this before applicationDidFinishLaunching
-            // when the app is cold-started to open a file. Buffer until observers
-            // are wired up.
-            Self.pendingURL = url
+            pendingURL = url
         }
         return true
+    }
+
+    /// Reset the module-global launch state. Tests only.
+    static func resetState() {
+        pendingURL = nil
+        didFinishLaunching = false
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Self.handleDidFinishLaunching()
+    }
+
+    func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+        Self.handleOpenFile(filename)
     }
 
     static func post(url: URL) {

@@ -39,6 +39,15 @@ struct MainWindow: View {
         }
         .animation(.easeInOut(duration: 0.15), value: tocVisible)
         .animation(.easeInOut(duration: 0.15), value: folder.root)
+        .onAppear {
+            // Drain any launch-time URL buffered by AppDelegate. By now the
+            // NotificationBridge's .onReceive subscribers below are live, so
+            // re-posting here routes through the same dir/file branching as
+            // warm opens.
+            if let url = AppDelegate.consumePendingURL() {
+                AppDelegate.post(url: url)
+            }
+        }
     }
 
     private var content: some View {
