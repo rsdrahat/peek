@@ -19,4 +19,28 @@ enum Pref {
             UserDefaults.standard.set(clamped, forKey: zoomKey)
         }
     }
+
+    // MARK: - Sidebar
+
+    static let sidebarCollapsedKey = "peek.sidebar.collapsed"
+    static let sidebarWidthKey = "peek.sidebar.width"
+    static let defaultSidebarWidth: Double = 240
+    static let sidebarMinWidth: Double = 180
+    static let sidebarMaxWidth: Double = 480
+
+    static var sidebarCollapsed: Bool {
+        get { UserDefaults.standard.bool(forKey: sidebarCollapsedKey) }
+        set { UserDefaults.standard.set(newValue, forKey: sidebarCollapsedKey) }
+    }
+
+    static var sidebarWidth: Double {
+        get {
+            let raw = UserDefaults.standard.double(forKey: sidebarWidthKey)
+            return raw == 0 ? defaultSidebarWidth : raw
+        }
+        set {
+            let clamped = min(max(newValue, sidebarMinWidth), sidebarMaxWidth)
+            UserDefaults.standard.set(clamped, forKey: sidebarWidthKey)
+        }
+    }
 }

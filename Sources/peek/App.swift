@@ -34,6 +34,8 @@ struct PeekApp: App {
                     }
                 }
                 Button("Close Folder") { NotificationCenter.default.post(name: .peekCloseFolder, object: nil) }
+                Button("Toggle Sidebar") { NotificationCenter.default.post(name: .peekToggleSidebar, object: nil) }
+                    .keyboardShortcut("b", modifiers: .command)
             }
             CommandGroup(after: .saveItem) {
                 Button("Export as PDF…") { NotificationCenter.default.post(name: .peekExportPDF, object: nil) }
@@ -80,6 +82,7 @@ extension Notification.Name {
     static let peekPrint = Notification.Name("peek.print")
     static let peekExportPDF = Notification.Name("peek.exportPDF")
     static let peekToggleTOC = Notification.Name("peek.toggleTOC")
+    static let peekToggleSidebar = Notification.Name("peek.toggleSidebar")
     static let peekScrollToAnchor = Notification.Name("peek.scrollToAnchor")
     static let peekRevealInSidebar = Notification.Name("peek.revealInSidebar")
 }
