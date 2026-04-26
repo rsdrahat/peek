@@ -28,11 +28,12 @@ Sprints land as GitHub milestones:
 - **v0.1 MVP** — open, render, watch, theme, GFM basics, drag-drop
 - **v0.2 Polish** — persist window state, scroll memory, zoom, print/export
 - **v0.3 Folder view** — sidebar file tree, keyboard nav
-- **v0.4 Editor** — split view, live preview
-- **v0.5 Config & presets** — themes, fonts, custom CSS
-- **v0.6 Data viewers** — first-class viewers for the textual formats agents emit: JSON + JSONL first (collapsible tree, search, key-path copy, virtualized rows for large files), then YAML and TOML. Same shell, same typography, same window. Extends the motto from "agents don't read .docx" to the whole structured-text surface.
+- **v0.4 Search** — file-name fuzzy finder (Cmd+P) and content search across the open folder (Cmd+Shift+F), unified in one lightning-fast palette. Light: native Foundation APIs / NSPredicate, no JS or background indexer for v1; rebuild the file index on folder open. Bar to clear: results visible within a frame of typing on a 10k-file folder.
+- **v0.5 Editor** — split view, live preview
+- **v0.6 Config & presets** — themes, fonts, custom CSS
+- **v0.7 Data viewers** — first-class viewers for the textual formats agents emit: JSON + JSONL first (collapsible tree, search, key-path copy, virtualized rows for large files), then YAML and TOML. Same shell, same typography, same window. Extends the motto from "agents don't read .docx" to the whole structured-text surface.
 
-Do not blur sprint boundaries without updating the milestones. Editor work does not start before 0.3 ships; data-viewer work does not start before 0.5 ships.
+Do not blur sprint boundaries without updating the milestones. Each sprint ships before the next one starts: search work does not start before 0.3 ships, editor work does not start before 0.4 ships, data-viewer work does not start before 0.6 ships.
 
 ## PR etiquette
 
