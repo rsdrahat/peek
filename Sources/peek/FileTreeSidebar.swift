@@ -45,7 +45,10 @@ struct FileTreeSidebar: View {
                 }
             }
         }
-        .frame(minWidth: 200, idealWidth: 240, maxWidth: 320)
+        // Width is driven by the parent (MainWindow) via .frame(width:) so the
+        // user-resizable splitter can take control. Keep an absolute min so
+        // header + chevron column never collide.
+        .frame(minWidth: 120, maxWidth: .infinity)
         .background(.thinMaterial)
         .focusable()
         .focused($focused)

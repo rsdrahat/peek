@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import AppKit
 
 struct MainWindow: View {
     @StateObject private var document = MarkdownDocument()
@@ -14,10 +15,12 @@ struct MainWindow: View {
     @State private var zoom: Double = Pref.zoom
     @State private var webView: WKWebView?
     @State private var tocVisible = false
+    @State private var sidebarCollapsed: Bool = Pref.sidebarCollapsed
+    @State private var sidebarWidth: Double = Pref.sidebarWidth
 
     var body: some View {
         HStack(spacing: 0) {
-            if let root = folder.root {
+            if let root = folder.root, !sidebarCollapsed {
                 FileTreeSidebar(
                     root: root,
                     showAllFiles: Binding(get: { folder.showAllFiles }, set: { folder.showAllFiles = $0 }),
@@ -25,8 +28,9 @@ struct MainWindow: View {
                 ) { url in
                     document.open(url: url)
                 }
+                .frame(width: sidebarWidth)
                 .transition(.move(edge: .leading))
-                Divider()
+                ResizableDivider(width: $sidebarWidth)
             }
             if tocVisible {
                 TOCSidebar(entries: document.toc) { entry in
@@ -39,6 +43,7 @@ struct MainWindow: View {
         }
         .animation(.easeInOut(duration: 0.15), value: tocVisible)
         .animation(.easeInOut(duration: 0.15), value: folder.root)
+        .animation(.easeInOut(duration: 0.15), value: sidebarCollapsed)
         .onAppear {
             // Drain any launch-time URL buffered by AppDelegate. We open
             // `document` / `folder` directly rather than posting a
@@ -133,7 +138,11 @@ struct MainWindow: View {
                     PrintExport.exportPDF(webView: webView, suggestedName: "\(stem).pdf")
                 }
             },
-            onToggleTOC: { tocVisible.toggle() }
+            onToggleTOC: { tocVisible.toggle() },
+            onToggleSidebar: {
+                sidebarCollapsed.toggle()
+                Pref.sidebarCollapsed = sidebarCollapsed
+            }
         ))
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             guard let provider = providers.first else { return false }
@@ -197,6 +206,7 @@ private struct NotificationBridge: ViewModifier {
     let onPrint: () -> Void
     let onExportPDF: () -> Void
     let onToggleTOC: () -> Void
+    let onToggleSidebar: () -> Void
 
     func body(content: Content) -> some View {
         content
@@ -216,6 +226,42 @@ private struct NotificationBridge: ViewModifier {
             .onReceive(NotificationCenter.default.publisher(for: .peekPrint)) { _ in onPrint() }
             .onReceive(NotificationCenter.default.publisher(for: .peekExportPDF)) { _ in onExportPDF() }
             .onReceive(NotificationCenter.default.publisher(for: .peekToggleTOC)) { _ in onToggleTOC() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekToggleSidebar)) { _ in onToggleSidebar() }
+    }
+}
+
+/// Draggable splitter between the file-tree sidebar and the document. Exposes
+/// a 6pt-wide hit area with a 1pt visual divider; persists the new width on
+/// drag-end so it survives window/app restarts.
+private struct ResizableDivider: View {
+    @Binding var width: Double
+    @State private var dragStartWidth: Double?
+
+    var body: some View {
+        ZStack {
+            Color.clear
+            Divider()
+        }
+        .frame(width: 6)
+        .contentShape(Rectangle())
+        .onContinuousHover { phase in
+            switch phase {
+            case .active: NSCursor.resizeLeftRight.set()
+            case .ended:  NSCursor.arrow.set()
+            }
+        }
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    if dragStartWidth == nil { dragStartWidth = width }
+                    let proposed = (dragStartWidth ?? width) + value.translation.width
+                    width = max(Pref.sidebarMinWidth, min(Pref.sidebarMaxWidth, proposed))
+                }
+                .onEnded { _ in
+                    dragStartWidth = nil
+                    Pref.sidebarWidth = width
+                }
+        )
     }
 }
 
