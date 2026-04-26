@@ -30,8 +30,9 @@ Sprints land as GitHub milestones:
 - **v0.3 Folder view** — sidebar file tree, keyboard nav
 - **v0.4 Editor** — split view, live preview
 - **v0.5 Config & presets** — themes, fonts, custom CSS
+- **v0.6 Data viewers** — first-class viewers for the textual formats agents emit: JSON + JSONL first (collapsible tree, search, key-path copy, virtualized rows for large files), then YAML and TOML. Same shell, same typography, same window. Extends the motto from "agents don't read .docx" to the whole structured-text surface.
 
-Do not blur sprint boundaries without updating the milestones. Editor work does not start before 0.3 ships.
+Do not blur sprint boundaries without updating the milestones. Editor work does not start before 0.3 ships; data-viewer work does not start before 0.5 ships.
 
 ## PR etiquette
 
