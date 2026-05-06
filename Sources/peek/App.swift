@@ -34,6 +34,8 @@ struct PeekApp: App {
                     }
                 }
                 Button("Close Folder") { NotificationCenter.default.post(name: .peekCloseFolder, object: nil) }
+                Button("Refresh Folder") { NotificationCenter.default.post(name: .peekRefreshFolder, object: nil) }
+                    .keyboardShortcut("r", modifiers: [.command, .shift])
                 Button("Toggle Sidebar") { NotificationCenter.default.post(name: .peekToggleSidebar, object: nil) }
                     .keyboardShortcut("b", modifiers: .command)
             }
@@ -75,6 +77,7 @@ extension Notification.Name {
     static let peekOpenFile = Notification.Name("peek.openFile")
     static let peekOpenFolder = Notification.Name("peek.openFolder")
     static let peekCloseFolder = Notification.Name("peek.closeFolder")
+    static let peekRefreshFolder = Notification.Name("peek.refreshFolder")
     static let peekFindOpen = Notification.Name("peek.findOpen")
     static let peekZoomIn = Notification.Name("peek.zoomIn")
     static let peekZoomOut = Notification.Name("peek.zoomOut")

@@ -9,17 +9,28 @@ final class FolderBrowser: ObservableObject {
     }
 
     private var rootURL: URL?
+    private var watcher: FolderWatcher?
 
     static let markdownExtensions: Set<String> = ["md", "markdown", "mdown", "mkd"]
 
     func open(rootURL url: URL) {
         self.rootURL = url
         rebuild()
+        watcher = FolderWatcher(url: url) { [weak self] in
+            self?.rebuild()
+        }
     }
 
     func close() {
         rootURL = nil
         root = nil
+        watcher = nil
+    }
+
+    /// Force a tree rebuild from disk. FSEvents covers the common case;
+    /// this exists as a manual fallback (network mounts, missed events).
+    func refresh() {
+        rebuild()
     }
 
     var isOpen: Bool { rootURL != nil }
