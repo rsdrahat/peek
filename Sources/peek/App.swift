@@ -60,6 +60,8 @@ struct PeekApp: App {
                     .keyboardShortcut("f", modifiers: .command)
                 Button("Go to File…") { NotificationCenter.default.post(name: .peekPaletteOpen, object: nil) }
                     .keyboardShortcut("p", modifiers: .command)
+                Button("Search in Folder…") { NotificationCenter.default.post(name: .peekContentSearchOpen, object: nil) }
+                    .keyboardShortcut("f", modifiers: [.command, .shift])
             }
             CommandGroup(after: .toolbar) {
                 Button("Zoom In") { NotificationCenter.default.post(name: .peekZoomIn, object: nil) }
@@ -81,6 +83,7 @@ extension Notification.Name {
     static let peekCloseFolder = Notification.Name("peek.closeFolder")
     static let peekFindOpen = Notification.Name("peek.findOpen")
     static let peekPaletteOpen = Notification.Name("peek.paletteOpen")
+    static let peekContentSearchOpen = Notification.Name("peek.contentSearchOpen")
     static let peekZoomIn = Notification.Name("peek.zoomIn")
     static let peekZoomOut = Notification.Name("peek.zoomOut")
     static let peekZoomReset = Notification.Name("peek.zoomReset")

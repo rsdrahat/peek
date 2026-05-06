@@ -6,6 +6,7 @@ struct MainWindow: View {
     @StateObject private var document = MarkdownDocument()
     @StateObject private var folder = FolderBrowser()
     @StateObject private var fileIndex = FileIndex()
+    @StateObject private var contentSearcher = ContentSearcher()
     @Environment(\.colorScheme) private var systemScheme
     @State private var themeOverride: ColorScheme? = nil
 
@@ -21,6 +22,12 @@ struct MainWindow: View {
 
     @State private var paletteVisible = false
     @State private var paletteQuery = ""
+    @State private var paletteMode: PaletteMode = .files
+
+    enum PaletteMode: Equatable {
+        case files
+        case content
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -53,6 +60,14 @@ struct MainWindow: View {
         }
         .onChange(of: folder.showAllFiles) { _, showAll in
             fileIndex.build(root: folder.root?.url, showAllFiles: showAll)
+        }
+        .onChange(of: paletteQuery) { _, q in
+            if paletteMode == .content {
+                contentSearcher.search(query: q, in: fileIndex.files)
+            }
+        }
+        .onChange(of: paletteVisible) { _, visible in
+            if !visible { contentSearcher.clear() }
         }
         .onAppear {
             // Drain any launch-time URL buffered by AppDelegate. We open
@@ -124,7 +139,7 @@ struct MainWindow: View {
                     visible: $paletteVisible,
                     query: $paletteQuery,
                     items: paletteItems,
-                    placeholder: paletteIsOpen ? "Search files in this folder…" : "Open a folder to search files",
+                    placeholder: palettePlaceholder,
                     emptyMessage: paletteEmptyMessage,
                     onActivate: handlePaletteActivation
                 )
@@ -147,7 +162,8 @@ struct MainWindow: View {
             onReload: { document.reload() },
             onToggleTheme: { themeOverride = (effectiveTheme == .dark) ? .light : .dark },
             onFindOpen: { findVisible = true },
-            onPaletteOpen: { paletteVisible = true; paletteQuery = "" },
+            onPaletteOpen: { openPalette(mode: .files) },
+            onContentSearchOpen: { openPalette(mode: .content) },
             onZoomIn: { setZoom(zoom + Pref.zoomStep) },
             onZoomOut: { setZoom(zoom - Pref.zoomStep) },
             onZoomReset: { setZoom(Pref.defaultZoom) },
@@ -218,10 +234,16 @@ struct MainWindow: View {
 
     // MARK: - Palette
 
-    /// Top-N fuzzy matches for the current query, scored against the relative
-    /// path of each indexed file. Empty when the query is empty so the user
-    /// sees a hint instead of the entire folder dump.
     private var paletteItems: [PaletteItem] {
+        switch paletteMode {
+        case .files: return fuzzyFileItems
+        case .content: return contentMatchItems
+        }
+    }
+
+    /// Top-N fuzzy matches for the current query, scored against the relative
+    /// path of each indexed file.
+    private var fuzzyFileItems: [PaletteItem] {
         guard let rootURL = folder.root?.url, !paletteQuery.isEmpty else { return [] }
         let q = paletteQuery
         let rootPath = rootURL.standardizedFileURL.path
@@ -236,8 +258,7 @@ struct MainWindow: View {
         }
         scored.sort { $0.score > $1.score }
 
-        let top = scored.prefix(50)
-        return top.map { entry in
+        return scored.prefix(50).map { entry in
             let rel = relativePath(of: entry.url, under: rootPath)
             let dir = (rel as NSString).deletingLastPathComponent
             return PaletteItem(
@@ -248,19 +269,64 @@ struct MainWindow: View {
         }
     }
 
+    private var contentMatchItems: [PaletteItem] {
+        guard let rootURL = folder.root?.url else { return [] }
+        let rootPath = rootURL.standardizedFileURL.path
+        return contentSearcher.matches.map { match in
+            let rel = relativePath(of: match.url, under: rootPath)
+            return PaletteItem(
+                id: "\(match.url.path):\(match.lineNumber)",
+                title: match.line.trimmingCharacters(in: .whitespaces),
+                subtitle: "\(rel):\(match.lineNumber)",
+                systemImage: "text.magnifyingglass"
+            )
+        }
+    }
+
     private var paletteIsOpen: Bool { folder.root != nil }
 
+    private var palettePlaceholder: String {
+        switch paletteMode {
+        case .files: return paletteIsOpen ? "Search files in this folder…" : "Open a folder to search files"
+        case .content: return paletteIsOpen ? "Search file contents…" : "Open a folder to search contents"
+        }
+    }
+
     private var paletteEmptyMessage: String? {
-        if !paletteIsOpen { return "Open a folder first (⌘⌥O) to enable file search." }
-        if fileIndex.isBuilding && paletteQuery.isEmpty { return "Indexing files…" }
-        if paletteQuery.isEmpty { return "Type to search \(fileIndex.files.count) files in this folder…" }
-        return "No matches for \"\(paletteQuery)\""
+        if !paletteIsOpen { return "Open a folder first (⌘⌥O) to search." }
+        switch paletteMode {
+        case .files:
+            if fileIndex.isBuilding && paletteQuery.isEmpty { return "Indexing files…" }
+            if paletteQuery.isEmpty { return "Type to search \(fileIndex.files.count) files in this folder…" }
+            return "No matches for \"\(paletteQuery)\""
+        case .content:
+            if paletteQuery.isEmpty { return "Type to search across file contents…" }
+            if contentSearcher.isSearching { return "Searching…" }
+            return "No matches for \"\(paletteQuery)\""
+        }
     }
 
     private func handlePaletteActivation(_ item: PaletteItem) {
-        // The id encodes the absolute file path for file-mode results.
-        // Future modes (commands, content) will route differently.
-        document.open(url: URL(fileURLWithPath: item.id))
+        // File mode: id is the absolute file path.
+        // Content mode: id is "path:lineNumber". Strip the line for now —
+        // jumping to a specific line in the rendered HTML is a separate
+        // problem (source-line → DOM offset mapping).
+        let path: String
+        if let colonIdx = item.id.lastIndex(of: ":"),
+           paletteMode == .content,
+           Int(item.id[item.id.index(after: colonIdx)...]) != nil {
+            path = String(item.id[..<colonIdx])
+        } else {
+            path = item.id
+        }
+        document.open(url: URL(fileURLWithPath: path))
+    }
+
+    private func openPalette(mode: PaletteMode) {
+        paletteMode = mode
+        paletteQuery = ""
+        paletteVisible = true
+        if mode == .content { contentSearcher.clear() }
     }
 
     private func relativePath(of url: URL, under rootPath: String) -> String {
@@ -280,6 +346,7 @@ private struct NotificationBridge: ViewModifier {
     let onToggleTheme: () -> Void
     let onFindOpen: () -> Void
     let onPaletteOpen: () -> Void
+    let onContentSearchOpen: () -> Void
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
     let onZoomReset: () -> Void
@@ -301,6 +368,7 @@ private struct NotificationBridge: ViewModifier {
             .onReceive(NotificationCenter.default.publisher(for: .peekToggleTheme)) { _ in onToggleTheme() }
             .onReceive(NotificationCenter.default.publisher(for: .peekFindOpen)) { _ in onFindOpen() }
             .onReceive(NotificationCenter.default.publisher(for: .peekPaletteOpen)) { _ in onPaletteOpen() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekContentSearchOpen)) { _ in onContentSearchOpen() }
             .onReceive(NotificationCenter.default.publisher(for: .peekZoomIn)) { _ in onZoomIn() }
             .onReceive(NotificationCenter.default.publisher(for: .peekZoomOut)) { _ in onZoomOut() }
             .onReceive(NotificationCenter.default.publisher(for: .peekZoomReset)) { _ in onZoomReset() }
