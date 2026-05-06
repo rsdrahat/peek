@@ -2,22 +2,35 @@ import AppKit
 import UniformTypeIdentifiers
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    // Buffered launch-time URL. Populated by `application:openFile:` (delivered
-    // by Launch Services before `applicationDidFinishLaunching`) or falls back
-    // to argv. Drained by `MainWindow.onAppear` via `consumePendingURL()`.
+    // Launch-time URL is held in `LaunchURLBuffer.shared.pendingURL`, which is
+    // observable. MainWindow drains the initial value on .onAppear and watches
+    // for subsequent changes via .onChange. This handles three cases uniformly:
     //
-    // Why not post via NotificationCenter at launch: SwiftUI's WindowGroup does
-    // not reliably materialize the root view — and therefore register its
-    // `.onReceive(.peekOpenFile)` subscriber — within one runloop tick of
-    // `applicationDidFinishLaunching`. On some machines the notification fired
-    // before there was anyone to receive it, and the window sat on the welcome
-    // HTML. Buffer + pull eliminates the race.
-    static var pendingURL: URL?
+    // 1. Cold start, openFile fires *before* applicationDidFinishLaunching:
+    //    handleOpenFile writes the buffer; .onAppear drains it.
+    // 2. Cold start, openFile fires *after* applicationDidFinishLaunching:
+    //    handleOpenFile writes the buffer; .onChange picks it up whenever
+    //    SwiftUI gets around to materializing the view tree. Previously this
+    //    posted a NotificationCenter event before the bridge was subscribed,
+    //    swallowing the URL — that's the bug this commit fixes.
+    // 3. Warm start (peek already running, second `peek <thing>` invocation):
+    //    handleOpenFile writes the buffer; .onChange in the live MainWindow
+    //    reacts.
+    //
+    // The static `pendingURL` and `consumePendingURL()` accessors stay for
+    // backwards compatibility with existing call sites and tests; they
+    // forward to the buffer.
     static var didFinishLaunching = false
 
+    static var pendingURL: URL? {
+        get { LaunchURLBuffer.shared.pendingURL }
+        set { LaunchURLBuffer.shared.pendingURL = newValue }
+    }
+
     static func consumePendingURL() -> URL? {
-        defer { pendingURL = nil }
-        return pendingURL
+        let url = LaunchURLBuffer.shared.pendingURL
+        LaunchURLBuffer.shared.pendingURL = nil
+        return url
     }
 
     /// Testable core of `applicationDidFinishLaunching`.
@@ -28,15 +41,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Testable core of `application(_:openFile:)`.
+    /// Testable core of `application(_:openFile:)`. Always writes the buffer;
+    /// MainWindow observes and opens whatever lands here. Whether
+    /// `didFinishLaunching` has fired and whether the SwiftUI subscriber is
+    /// attached are no longer load-bearing.
     @discardableResult
     static func handleOpenFile(_ filename: String) -> Bool {
-        let url = URL(fileURLWithPath: filename)
-        if didFinishLaunching {
-            post(url: url)
-        } else {
-            pendingURL = url
-        }
+        pendingURL = URL(fileURLWithPath: filename)
         return true
     }
 
