@@ -5,6 +5,7 @@ import AppKit
 struct MainWindow: View {
     @StateObject private var document = MarkdownDocument()
     @StateObject private var folder = FolderBrowser()
+    @StateObject private var fileIndex = FileIndex()
     @Environment(\.colorScheme) private var systemScheme
     @State private var themeOverride: ColorScheme? = nil
 
@@ -47,6 +48,12 @@ struct MainWindow: View {
         .animation(.easeInOut(duration: 0.15), value: tocVisible)
         .animation(.easeInOut(duration: 0.15), value: folder.root)
         .animation(.easeInOut(duration: 0.15), value: sidebarCollapsed)
+        .onChange(of: folder.root?.url) { _, newRoot in
+            fileIndex.build(root: newRoot, showAllFiles: folder.showAllFiles)
+        }
+        .onChange(of: folder.showAllFiles) { _, showAll in
+            fileIndex.build(root: folder.root?.url, showAllFiles: showAll)
+        }
         .onAppear {
             // Drain any launch-time URL buffered by AppDelegate. We open
             // `document` / `folder` directly rather than posting a
@@ -211,23 +218,57 @@ struct MainWindow: View {
 
     // MARK: - Palette
 
-    /// Items to show in the file palette. Empty for now — fuzzy file search
-    /// lands in the next PR (search.fuzzy-files), content search after that.
-    private var paletteItems: [PaletteItem] { [] }
+    /// Top-N fuzzy matches for the current query, scored against the relative
+    /// path of each indexed file. Empty when the query is empty so the user
+    /// sees a hint instead of the entire folder dump.
+    private var paletteItems: [PaletteItem] {
+        guard let rootURL = folder.root?.url, !paletteQuery.isEmpty else { return [] }
+        let q = paletteQuery
+        let rootPath = rootURL.standardizedFileURL.path
+
+        var scored: [(score: Double, url: URL)] = []
+        scored.reserveCapacity(min(fileIndex.files.count, 1024))
+
+        for url in fileIndex.files {
+            let rel = relativePath(of: url, under: rootPath)
+            guard let s = FuzzyMatch.score(query: q, in: rel) else { continue }
+            scored.append((s, url))
+        }
+        scored.sort { $0.score > $1.score }
+
+        let top = scored.prefix(50)
+        return top.map { entry in
+            let rel = relativePath(of: entry.url, under: rootPath)
+            let dir = (rel as NSString).deletingLastPathComponent
+            return PaletteItem(
+                id: entry.url.path,
+                title: entry.url.lastPathComponent,
+                subtitle: dir.isEmpty ? nil : dir
+            )
+        }
+    }
 
     private var paletteIsOpen: Bool { folder.root != nil }
 
     private var paletteEmptyMessage: String? {
         if !paletteIsOpen { return "Open a folder first (⌘⌥O) to enable file search." }
-        if paletteQuery.isEmpty { return "Type to search files in this folder…" }
-        return "No results"
+        if fileIndex.isBuilding && paletteQuery.isEmpty { return "Indexing files…" }
+        if paletteQuery.isEmpty { return "Type to search \(fileIndex.files.count) files in this folder…" }
+        return "No matches for \"\(paletteQuery)\""
     }
 
     private func handlePaletteActivation(_ item: PaletteItem) {
-        // The id encodes the file path for file-mode results. Future modes
-        // (commands, content) will route differently.
-        let url = URL(fileURLWithPath: item.id)
-        document.open(url: url)
+        // The id encodes the absolute file path for file-mode results.
+        // Future modes (commands, content) will route differently.
+        document.open(url: URL(fileURLWithPath: item.id))
+    }
+
+    private func relativePath(of url: URL, under rootPath: String) -> String {
+        let p = url.standardizedFileURL.path
+        if p.hasPrefix(rootPath + "/") {
+            return String(p.dropFirst(rootPath.count + 1))
+        }
+        return p
     }
 }
 
