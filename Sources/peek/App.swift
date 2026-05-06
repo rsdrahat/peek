@@ -38,6 +38,10 @@ struct PeekApp: App {
                     .keyboardShortcut("r", modifiers: [.command, .shift])
                 Button("Toggle Sidebar") { NotificationCenter.default.post(name: .peekToggleSidebar, object: nil) }
                     .keyboardShortcut("b", modifiers: .command)
+                Divider()
+                Button("Set peek as Default for Markdown") {
+                    NotificationCenter.default.post(name: .peekSetAsDefault, object: nil)
+                }
             }
             CommandGroup(after: .saveItem) {
                 Button("Export as PDF…") { NotificationCenter.default.post(name: .peekExportPDF, object: nil) }
@@ -87,6 +91,7 @@ extension Notification.Name {
     static let peekFindOpen = Notification.Name("peek.findOpen")
     static let peekPaletteOpen = Notification.Name("peek.paletteOpen")
     static let peekContentSearchOpen = Notification.Name("peek.contentSearchOpen")
+    static let peekSetAsDefault = Notification.Name("peek.setAsDefault")
     static let peekZoomIn = Notification.Name("peek.zoomIn")
     static let peekZoomOut = Notification.Name("peek.zoomOut")
     static let peekZoomReset = Notification.Name("peek.zoomReset")
