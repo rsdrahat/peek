@@ -18,6 +18,9 @@ struct MainWindow: View {
     @State private var sidebarCollapsed: Bool = Pref.sidebarCollapsed
     @State private var sidebarWidth: Double = Pref.sidebarWidth
 
+    @State private var paletteVisible = false
+    @State private var paletteQuery = ""
+
     var body: some View {
         HStack(spacing: 0) {
             if let root = folder.root, !sidebarCollapsed {
@@ -108,8 +111,21 @@ struct MainWindow: View {
                 .padding(.top, 8)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
+
+            if paletteVisible {
+                CommandPalette(
+                    visible: $paletteVisible,
+                    query: $paletteQuery,
+                    items: paletteItems,
+                    placeholder: paletteIsOpen ? "Search files in this folder…" : "Open a folder to search files",
+                    emptyMessage: paletteEmptyMessage,
+                    onActivate: handlePaletteActivation
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
+            }
         }
         .animation(.easeInOut(duration: 0.12), value: findVisible)
+        .animation(.easeInOut(duration: 0.12), value: paletteVisible)
         .navigationTitle(document.displayTitle)
         .onChange(of: findQuery) { _, q in
             if !q.isEmpty { issueFind(backwards: false) }
@@ -124,6 +140,7 @@ struct MainWindow: View {
             onReload: { document.reload() },
             onToggleTheme: { themeOverride = (effectiveTheme == .dark) ? .light : .dark },
             onFindOpen: { findVisible = true },
+            onPaletteOpen: { paletteVisible = true; paletteQuery = "" },
             onZoomIn: { setZoom(zoom + Pref.zoomStep) },
             onZoomOut: { setZoom(zoom - Pref.zoomStep) },
             onZoomReset: { setZoom(Pref.defaultZoom) },
@@ -191,6 +208,27 @@ struct MainWindow: View {
             nonce: findRequest.nonce &+ 1
         )
     }
+
+    // MARK: - Palette
+
+    /// Items to show in the file palette. Empty for now — fuzzy file search
+    /// lands in the next PR (search.fuzzy-files), content search after that.
+    private var paletteItems: [PaletteItem] { [] }
+
+    private var paletteIsOpen: Bool { folder.root != nil }
+
+    private var paletteEmptyMessage: String? {
+        if !paletteIsOpen { return "Open a folder first (⌘⌥O) to enable file search." }
+        if paletteQuery.isEmpty { return "Type to search files in this folder…" }
+        return "No results"
+    }
+
+    private func handlePaletteActivation(_ item: PaletteItem) {
+        // The id encodes the file path for file-mode results. Future modes
+        // (commands, content) will route differently.
+        let url = URL(fileURLWithPath: item.id)
+        document.open(url: url)
+    }
 }
 
 private struct NotificationBridge: ViewModifier {
@@ -200,6 +238,7 @@ private struct NotificationBridge: ViewModifier {
     let onReload: () -> Void
     let onToggleTheme: () -> Void
     let onFindOpen: () -> Void
+    let onPaletteOpen: () -> Void
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
     let onZoomReset: () -> Void
@@ -220,6 +259,7 @@ private struct NotificationBridge: ViewModifier {
             .onReceive(NotificationCenter.default.publisher(for: .peekReload)) { _ in onReload() }
             .onReceive(NotificationCenter.default.publisher(for: .peekToggleTheme)) { _ in onToggleTheme() }
             .onReceive(NotificationCenter.default.publisher(for: .peekFindOpen)) { _ in onFindOpen() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekPaletteOpen)) { _ in onPaletteOpen() }
             .onReceive(NotificationCenter.default.publisher(for: .peekZoomIn)) { _ in onZoomIn() }
             .onReceive(NotificationCenter.default.publisher(for: .peekZoomOut)) { _ in onZoomOut() }
             .onReceive(NotificationCenter.default.publisher(for: .peekZoomReset)) { _ in onZoomReset() }

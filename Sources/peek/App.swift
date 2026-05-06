@@ -42,8 +42,10 @@ struct PeekApp: App {
                     .keyboardShortcut("e", modifiers: [.command, .shift])
             }
             CommandGroup(replacing: .printItem) {
+                // Print moved to ⇧⌘P to free ⌘P for the file palette (v0.4
+                // search). ⇧⌘P is the de-facto convention in modern editors.
                 Button("Print…") { NotificationCenter.default.post(name: .peekPrint, object: nil) }
-                    .keyboardShortcut("p", modifiers: .command)
+                    .keyboardShortcut("p", modifiers: [.command, .shift])
             }
             CommandGroup(after: .toolbar) {
                 Button("Reload") { NotificationCenter.default.post(name: .peekReload, object: nil) }
@@ -56,6 +58,8 @@ struct PeekApp: App {
             CommandGroup(replacing: .textEditing) {
                 Button("Find…") { NotificationCenter.default.post(name: .peekFindOpen, object: nil) }
                     .keyboardShortcut("f", modifiers: .command)
+                Button("Go to File…") { NotificationCenter.default.post(name: .peekPaletteOpen, object: nil) }
+                    .keyboardShortcut("p", modifiers: .command)
             }
             CommandGroup(after: .toolbar) {
                 Button("Zoom In") { NotificationCenter.default.post(name: .peekZoomIn, object: nil) }
@@ -76,6 +80,7 @@ extension Notification.Name {
     static let peekOpenFolder = Notification.Name("peek.openFolder")
     static let peekCloseFolder = Notification.Name("peek.closeFolder")
     static let peekFindOpen = Notification.Name("peek.findOpen")
+    static let peekPaletteOpen = Notification.Name("peek.paletteOpen")
     static let peekZoomIn = Notification.Name("peek.zoomIn")
     static let peekZoomOut = Notification.Name("peek.zoomOut")
     static let peekZoomReset = Notification.Name("peek.zoomReset")
