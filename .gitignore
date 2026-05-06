@@ -11,3 +11,8 @@ DerivedData/
 *.cer
 *.certSigningRequest
 *.mobileprovision
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
