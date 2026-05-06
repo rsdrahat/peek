@@ -72,7 +72,10 @@ final class FolderBrowserTests: XCTestCase {
         XCTAssertEqual(names, ["a-dir", "z-dir", "a.md", "m.md"])
     }
 
-    func testSkipsEmptyDirsInMarkdownOnlyMode() throws {
+    func testEmptyDirectoriesShownInMarkdownOnlyMode() throws {
+        // Lazy loading means we no longer recurse on open to decide
+        // whether a directory is "worth showing". Matches Finder's
+        // behavior — empty dirs are visible, the user can expand.
         _ = try write("keep/inside.md")
         try FileManager.default.createDirectory(
             at: tmp.appendingPathComponent("empty"),
@@ -82,20 +85,34 @@ final class FolderBrowserTests: XCTestCase {
 
         let b = FolderBrowser()
         b.open(rootURL: tmp)
-        let names = (b.root?.children ?? []).map(\.name)
-        XCTAssertEqual(names, ["keep"])
+        let names = Set((b.root?.children ?? []).map(\.name))
+        XCTAssertEqual(names, ["empty", "keep", "only-txt"])
     }
 
-    func testRecursiveChildrenLoaded() throws {
+    func testNestedDirectoriesAreLazy() throws {
         _ = try write("nested/deep/inside.md")
 
         let b = FolderBrowser()
         b.open(rootURL: tmp)
         let nested = b.root?.children?.first
         XCTAssertEqual(nested?.name, "nested")
-        let deep = nested?.children?.first
+        // Lazy: children below the root are nil until loadChildren is called.
+        XCTAssertNil(nested?.children)
+
+        b.loadChildren(at: nested!.url)
+        let deep = b.loadedChildren[nested!.url]?.first
         XCTAssertEqual(deep?.name, "deep")
-        XCTAssertEqual(deep?.children?.first?.name, "inside.md")
+        XCTAssertNil(deep?.children)
+    }
+
+    func testIgnoredDirectoriesSkipped() throws {
+        _ = try write("node_modules/lib.md")
+        _ = try write("__pycache__/x.md")
+        _ = try write("docs/readme.md")
+        let b = FolderBrowser()
+        b.open(rootURL: tmp)
+        let names = Set((b.root?.children ?? []).map(\.name))
+        XCTAssertEqual(names, ["docs"])
     }
 
     func testCloseClearsRoot() throws {

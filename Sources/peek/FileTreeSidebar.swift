@@ -4,7 +4,9 @@ struct FileTreeSidebar: View {
     let root: FolderNode
     @Binding var showAllFiles: Bool
     let currentURL: URL?
+    let loadedChildren: [URL: [FolderNode]]
     let onSelect: (URL) -> Void
+    let onExpandDirectory: (URL) -> Void
 
     @State private var expanded: Set<URL> = []
     @State private var selection: URL?
@@ -18,7 +20,11 @@ struct FileTreeSidebar: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
-                        let rows = FlatRow.flatten(children: root.children ?? [], expanded: expanded)
+                        let rows = FlatRow.flatten(
+                            children: root.children ?? [],
+                            expanded: expanded,
+                            loadedChildren: loadedChildren
+                        )
                         ForEach(rows, id: \.node.id) { row in
                             NodeRow(
                                 node: row.node,
@@ -77,17 +83,19 @@ struct FileTreeSidebar: View {
     private func reveal(url: URL) {
         let standardized = url.standardizedFileURL
         let rootStd = root.url.standardizedFileURL
-        // Walk up from the target, expanding every ancestor that lies under root.
-        var dir = standardized
-        var ancestors: [URL] = []
-        while dir.path.hasPrefix(rootStd.path + "/") {
-            ancestors.append(dir)
-            dir = dir.deletingLastPathComponent()
+        // Walk up from the target's parent directory, expanding every
+        // ancestor that lies under root.
+        let fm = FileManager.default
+        var startDir = standardized
+        var isDir: ObjCBool = false
+        if fm.fileExists(atPath: startDir.path, isDirectory: &isDir), !isDir.boolValue {
+            startDir = startDir.deletingLastPathComponent()
         }
-        for ancestor in ancestors.reversed() {
-            if let node = findNode(ancestor), node.isDirectory {
-                expanded.insert(ancestor)
-            }
+        var dir = startDir
+        while dir.path.hasPrefix(rootStd.path + "/") {
+            onExpandDirectory(dir)
+            expanded.insert(dir)
+            dir = dir.deletingLastPathComponent()
         }
         selection = standardized
     }
@@ -155,9 +163,11 @@ struct FileTreeSidebar: View {
         guard let sel = selection, let node = findNode(sel) else { return }
         if node.isDirectory {
             if !expanded.contains(sel) {
+                onExpandDirectory(sel)
                 expanded.insert(sel)
-            } else if let first = node.children?.first {
-                selection = first.url
+            } else {
+                let kids = node.children ?? loadedChildren[sel] ?? []
+                if let first = kids.first { selection = first.url }
             }
         }
     }
@@ -179,8 +189,12 @@ struct FileTreeSidebar: View {
     private func activate(_ node: FolderNode) {
         selection = node.url
         if node.isDirectory {
-            if expanded.contains(node.url) { expanded.remove(node.url) }
-            else { expanded.insert(node.url) }
+            if expanded.contains(node.url) {
+                expanded.remove(node.url)
+            } else {
+                onExpandDirectory(node.url)
+                expanded.insert(node.url)
+            }
         } else {
             onSelect(node.url)
         }
@@ -189,7 +203,11 @@ struct FileTreeSidebar: View {
     // MARK: - Tree queries
 
     private func visibleRows() -> [FlatRow] {
-        FlatRow.flatten(children: root.children ?? [], expanded: expanded)
+        FlatRow.flatten(
+            children: root.children ?? [],
+            expanded: expanded,
+            loadedChildren: loadedChildren
+        )
     }
 
     private func firstNode() -> URL? {
@@ -204,17 +222,23 @@ struct FileTreeSidebar: View {
     }
 
     private func findNode(_ url: URL) -> FolderNode? {
-        FolderNode.find(url: url, in: root.children ?? [])
+        if root.url == url { return root }
+        let parent = url.deletingLastPathComponent()
+        let siblings: [FolderNode] = parent == root.url
+            ? (root.children ?? [])
+            : (loadedChildren[parent] ?? [])
+        return siblings.first(where: { $0.url == url })
     }
 
     private func findParent(of url: URL) -> FolderNode? {
-        FolderNode.findParent(of: url, in: root.children ?? [], parent: nil)
+        findNode(url.deletingLastPathComponent())
     }
 
     private func expandAncestors(of url: URL) {
         let rootPath = root.url.standardizedFileURL.path
         var dir = url.standardizedFileURL.deletingLastPathComponent()
         while dir.path.hasPrefix(rootPath) && dir.path != rootPath {
+            onExpandDirectory(dir)
             expanded.insert(dir)
             dir = dir.deletingLastPathComponent()
         }
@@ -227,33 +251,26 @@ struct FlatRow {
     let node: FolderNode
     let depth: Int
 
-    static func flatten(children: [FolderNode], expanded: Set<URL>, depth: Int = 0) -> [FlatRow] {
+    static func flatten(
+        children: [FolderNode],
+        expanded: Set<URL>,
+        loadedChildren: [URL: [FolderNode]] = [:],
+        depth: Int = 0
+    ) -> [FlatRow] {
         var out: [FlatRow] = []
         for node in children {
             out.append(FlatRow(node: node, depth: depth))
-            if node.isDirectory, expanded.contains(node.url), let kids = node.children {
-                out.append(contentsOf: flatten(children: kids, expanded: expanded, depth: depth + 1))
-            }
+            guard node.isDirectory, expanded.contains(node.url) else { continue }
+            // Root level keeps its inline children; deeper levels resolve via the cache.
+            let kids = node.children ?? loadedChildren[node.url] ?? []
+            out.append(contentsOf: flatten(
+                children: kids,
+                expanded: expanded,
+                loadedChildren: loadedChildren,
+                depth: depth + 1
+            ))
         }
         return out
-    }
-}
-
-extension FolderNode {
-    static func find(url: URL, in nodes: [FolderNode]) -> FolderNode? {
-        for n in nodes {
-            if n.url == url { return n }
-            if let kids = n.children, let hit = find(url: url, in: kids) { return hit }
-        }
-        return nil
-    }
-
-    static func findParent(of url: URL, in nodes: [FolderNode], parent: FolderNode?) -> FolderNode? {
-        for n in nodes {
-            if n.url == url { return parent }
-            if let kids = n.children, let hit = findParent(of: url, in: kids, parent: n) { return hit }
-        }
-        return nil
     }
 }
 

@@ -24,10 +24,11 @@ struct MainWindow: View {
                 FileTreeSidebar(
                     root: root,
                     showAllFiles: Binding(get: { folder.showAllFiles }, set: { folder.showAllFiles = $0 }),
-                    currentURL: document.currentURL
-                ) { url in
-                    document.open(url: url)
-                }
+                    currentURL: document.currentURL,
+                    loadedChildren: folder.loadedChildren,
+                    onSelect: { url in document.open(url: url) },
+                    onExpandDirectory: { url in folder.loadChildren(at: url) }
+                )
                 .frame(width: sidebarWidth)
                 .transition(.move(edge: .leading))
                 ResizableDivider(width: $sidebarWidth)
