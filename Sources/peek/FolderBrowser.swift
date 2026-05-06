@@ -105,13 +105,7 @@ final class FolderBrowser: ObservableObject {
 
         rebuildQueue.async {
             let topLevel = Self.listChildren(of: url, showAllFiles: showAll)
-            let fm = FileManager.default
-            var refreshed: [URL: [FolderNode]] = [:]
-            for cached in cachedURLs {
-                var isDir: ObjCBool = false
-                guard fm.fileExists(atPath: cached.path, isDirectory: &isDir), isDir.boolValue else { continue }
-                refreshed[cached] = Self.listChildren(of: cached, showAllFiles: showAll)
-            }
+            let refreshed = Self.refreshedChildren(forCached: cachedURLs, showAllFiles: showAll)
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 // Discard if state changed while we were off-main.
@@ -120,6 +114,23 @@ final class FolderBrowser: ObservableObject {
                 self.loadedChildren = refreshed
             }
         }
+    }
+
+    /// Re-list each previously-loaded subtree. Returns immutably so the
+    /// concurrently-executing closure that captures it doesn't trip the
+    /// Swift 6 "captured var in concurrent context" rule.
+    nonisolated static func refreshedChildren(
+        forCached cached: [URL],
+        showAllFiles: Bool
+    ) -> [URL: [FolderNode]] {
+        let fm = FileManager.default
+        var out: [URL: [FolderNode]] = [:]
+        for url in cached {
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue else { continue }
+            out[url] = listChildren(of: url, showAllFiles: showAllFiles)
+        }
+        return out
     }
 
     /// One level of `url` — fast, no recursion. Filters dot-files, the

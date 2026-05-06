@@ -26,10 +26,10 @@ final class ContentSearcher: ObservableObject {
 
     private var task: Task<Void, Never>?
 
-    static let maxFiles = 10_000
-    static let maxFileSizeBytes: UInt64 = 500_000
-    static let maxResults = 200
-    static let debounceNanoseconds: UInt64 = 150_000_000
+    nonisolated static let maxFiles = 10_000
+    nonisolated static let maxFileSizeBytes: UInt64 = 500_000
+    nonisolated static let maxResults = 200
+    nonisolated static let debounceNanoseconds: UInt64 = 150_000_000
 
     func search(query: String, in files: [URL]) {
         task?.cancel()
