@@ -25,10 +25,11 @@ struct MainWindow: View {
                 FileTreeSidebar(
                     root: root,
                     showAllFiles: Binding(get: { folder.showAllFiles }, set: { folder.showAllFiles = $0 }),
-                    currentURL: document.currentURL
-                ) { url in
-                    document.open(url: url)
-                }
+                    currentURL: document.currentURL,
+                    loadedChildren: folder.loadedChildren,
+                    onSelect: { url in document.open(url: url) },
+                    onExpandDirectory: { url in folder.loadChildren(at: url) }
+                )
                 .frame(width: sidebarWidth)
                 .transition(.move(edge: .leading))
                 ResizableDivider(width: $sidebarWidth)
@@ -121,6 +122,7 @@ struct MainWindow: View {
             onOpenFile: { document.open(url: $0) },
             onOpenFolder: { folder.open(rootURL: $0) },
             onCloseFolder: { folder.close() },
+            onRefreshFolder: { folder.refresh() },
             onReload: { document.reload() },
             onToggleTheme: { themeOverride = (effectiveTheme == .dark) ? .light : .dark },
             onFindOpen: { findVisible = true },
@@ -197,6 +199,7 @@ private struct NotificationBridge: ViewModifier {
     let onOpenFile: (URL) -> Void
     let onOpenFolder: (URL) -> Void
     let onCloseFolder: () -> Void
+    let onRefreshFolder: () -> Void
     let onReload: () -> Void
     let onToggleTheme: () -> Void
     let onFindOpen: () -> Void
@@ -217,6 +220,7 @@ private struct NotificationBridge: ViewModifier {
                 if let url = note.object as? URL { onOpenFolder(url) }
             }
             .onReceive(NotificationCenter.default.publisher(for: .peekCloseFolder)) { _ in onCloseFolder() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekRefreshFolder)) { _ in onRefreshFolder() }
             .onReceive(NotificationCenter.default.publisher(for: .peekReload)) { _ in onReload() }
             .onReceive(NotificationCenter.default.publisher(for: .peekToggleTheme)) { _ in onToggleTheme() }
             .onReceive(NotificationCenter.default.publisher(for: .peekFindOpen)) { _ in onFindOpen() }
