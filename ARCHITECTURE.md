@@ -62,7 +62,7 @@ docs/                    GitHub Pages site
 
 Explicit list of things **peek is not** and will not become:
 
-- Not an editor-first tool. Editing is a later sprint and will remain secondary to viewing.
+- Not an editor. peek is a viewer; edit in your editor, view in peek. There is no editing sprint.
 - Not a knowledge base. No backlinks graph, no daily notes, no plugin API.
 - Not cross-platform. macOS only. A Linux/Windows port would mean a different codebase.
 - Not a browser. No tabs beyond one-window-per-file. No webview navigation beyond the current document.
