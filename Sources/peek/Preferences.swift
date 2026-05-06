@@ -43,4 +43,16 @@ enum Pref {
             UserDefaults.standard.set(clamped, forKey: sidebarWidthKey)
         }
     }
+
+    // MARK: - Default-handler prompt
+
+    static let askedDefaultHandlerKey = "peek.askedDefaultHandler"
+
+    /// Whether the user has already answered the "make peek the default for
+    /// Markdown?" question. We only ever ask once at launch. They can revisit
+    /// the choice via the File menu.
+    static var askedDefaultHandler: Bool {
+        get { UserDefaults.standard.bool(forKey: askedDefaultHandlerKey) }
+        set { UserDefaults.standard.set(newValue, forKey: askedDefaultHandlerKey) }
+    }
 }

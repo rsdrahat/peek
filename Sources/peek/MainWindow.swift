@@ -25,6 +25,8 @@ struct MainWindow: View {
     @State private var paletteQuery = ""
     @State private var paletteMode: PaletteMode = .files
 
+    @State private var defaultHandlerPromptVisible = false
+
     enum PaletteMode: Equatable {
         case files
         case content
@@ -71,8 +73,45 @@ struct MainWindow: View {
         .onChange(of: paletteVisible) { _, visible in
             if !visible { contentSearcher.clear() }
         }
-        .onAppear { handleLaunchURL(launchBuffer.pendingURL) }
+        .onAppear {
+            handleLaunchURL(launchBuffer.pendingURL)
+            maybePromptForDefaultHandler()
+        }
         .onChange(of: launchBuffer.pendingURL) { _, new in handleLaunchURL(new) }
+        .alert(
+            "Open Markdown files with peek?",
+            isPresented: $defaultHandlerPromptVisible
+        ) {
+            Button("Set as Default") {
+                DefaultHandler.setPeekAsDefault()
+                Pref.askedDefaultHandler = true
+            }
+            Button("Not Now", role: .cancel) {
+                Pref.askedDefaultHandler = true
+            }
+        } message: {
+            Text("Make peek the default app for .md files? You can change this anytime from the File menu, or in Finder via Get Info → Open with.")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .peekSetAsDefault)) { _ in
+            DefaultHandler.setPeekAsDefault()
+        }
+    }
+
+    /// Show the default-handler prompt at most once. Skipped if peek is
+    /// already the default, or if the user has already answered.
+    private func maybePromptForDefaultHandler() {
+        guard !Pref.askedDefaultHandler else { return }
+        guard !DefaultHandler.isPeekDefault() else {
+            // Mark asked so we don't re-evaluate on every launch — peek is
+            // already the default, no question needed.
+            Pref.askedDefaultHandler = true
+            return
+        }
+        // Defer slightly so the alert lands after the window is on screen,
+        // not during initial layout.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            defaultHandlerPromptVisible = true
+        }
     }
 
     /// Open whatever URL the launch buffer holds (cold-start argv,
