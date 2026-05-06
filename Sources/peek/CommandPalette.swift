@@ -11,7 +11,9 @@ struct CommandPalette: View {
     let items: [PaletteItem]
     let placeholder: String
     let emptyMessage: String?
+    let modeLabel: String
     let onActivate: (PaletteItem) -> Void
+    let onModeToggle: () -> Void
 
     @State private var selectedIndex: Int = 0
     @FocusState private var queryFocused: Bool
@@ -52,6 +54,7 @@ struct CommandPalette: View {
         .onKeyPress(.return) { activateSelected(); return .handled }
         .onKeyPress(.downArrow) { move(+1); return .handled }
         .onKeyPress(.upArrow) { move(-1); return .handled }
+        .onKeyPress(.tab) { onModeToggle(); return .handled }
         .onKeyPress(keys: ["n"], phases: .down) { press in
             // Vim-style next, only when Ctrl is held (so it doesn't eat
             // typed letters in the query field).
@@ -69,6 +72,7 @@ struct CommandPalette: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
                 .font(.callout)
+            modeBadge
             TextField(placeholder, text: $query)
                 .textFieldStyle(.plain)
                 .font(.title3)
@@ -76,6 +80,26 @@ struct CommandPalette: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+    }
+
+    private var modeBadge: some View {
+        Button(action: onModeToggle) {
+            HStack(spacing: 3) {
+                Text(modeLabel)
+                    .font(.caption.weight(.medium))
+                Text("⇥")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.primary.opacity(0.06))
+            )
+        }
+        .buttonStyle(.plain)
+        .help("Switch mode (Tab)")
     }
 
     private var emptyState: some View {

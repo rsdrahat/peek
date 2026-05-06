@@ -141,7 +141,9 @@ struct MainWindow: View {
                     items: paletteItems,
                     placeholder: palettePlaceholder,
                     emptyMessage: paletteEmptyMessage,
-                    onActivate: handlePaletteActivation
+                    modeLabel: paletteModeLabel,
+                    onActivate: handlePaletteActivation,
+                    onModeToggle: togglePaletteMode
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
             }
@@ -327,6 +329,23 @@ struct MainWindow: View {
         paletteQuery = ""
         paletteVisible = true
         if mode == .content { contentSearcher.clear() }
+    }
+
+    private var paletteModeLabel: String {
+        switch paletteMode {
+        case .files: return "Files"
+        case .content: return "Content"
+        }
+    }
+
+    /// Toggle between file and content modes. Wipes the query because the
+    /// mode change shifts what the query *means* — file fuzzy match vs.
+    /// content substring scan — and stale text would just produce confusing
+    /// results.
+    private func togglePaletteMode() {
+        paletteMode = (paletteMode == .files) ? .content : .files
+        paletteQuery = ""
+        contentSearcher.clear()
     }
 
     private func relativePath(of url: URL, under rootPath: String) -> String {
