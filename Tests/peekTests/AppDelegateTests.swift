@@ -68,11 +68,12 @@ final class AppDelegateTests: XCTestCase {
 
     // MARK: - Launch-time URL buffering
     //
-    // Guards the 0.3.3 bug where `peek foo.md` showed the welcome screen on
-    // some machines: `applicationDidFinishLaunching` posted the .peekOpenFile
-    // notification on the next runloop tick, which was not reliably after
-    // SwiftUI's WindowGroup had wired up its subscriber. Now the URL is
-    // buffered and MainWindow drains it on .onAppear.
+    // `application:openFile:` always writes the launch buffer (now backed
+    // by the observable `LaunchURLBuffer`) — never posts a notification.
+    // MainWindow observes the buffer and opens whatever lands there. This
+    // closes the cold-start race where `peek <folder>` could swallow the
+    // URL because `applicationDidFinishLaunching` had fired but the SwiftUI
+    // notification subscribers weren't attached yet.
 
     func testConsumePendingURLReturnsAndClears() {
         AppDelegate.pendingURL = URL(fileURLWithPath: "/tmp/a.md")
@@ -85,9 +86,8 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertNil(AppDelegate.consumePendingURL())
     }
 
-    func testOpenFileBeforeLaunchBuffersIntoPendingURL() {
-        // Launch Services delivers the file BEFORE didFinishLaunching.
-        // Nothing subscribes yet, so posting would be lost — buffer instead.
+    func testOpenFileBeforeLaunchBuffersURL() {
+        // Cold start, openFile arrives before didFinishLaunching.
         let sawFile = expectationInverted(for: .peekOpenFile)
         let sawFolder = expectationInverted(for: .peekOpenFolder)
         AppDelegate.handleOpenFile("/tmp/early.md")
@@ -95,13 +95,26 @@ final class AppDelegateTests: XCTestCase {
         wait(for: [sawFile, sawFolder], timeout: 0.05)
     }
 
-    func testOpenFileAfterLaunchPostsImmediatelyAndDoesNotBuffer() {
+    func testOpenFileAfterLaunchAlsoBuffersAndDoesNotPost() {
+        // The cold-start race fix: handleOpenFile now ALWAYS buffers
+        // — including after didFinishLaunching — and never posts a
+        // notification directly. MainWindow observes LaunchURLBuffer
+        // and reacts whenever a URL lands. Posting here would be lost
+        // if the SwiftUI bridge isn't attached yet.
         AppDelegate.handleDidFinishLaunching(args: ["peek"])
-        let observer = NotificationCapture(name: .peekOpenFile)
+        let sawFile = expectationInverted(for: .peekOpenFile)
+        let sawFolder = expectationInverted(for: .peekOpenFolder)
         AppDelegate.handleOpenFile("/tmp/warm.md")
-        XCTAssertEqual(observer.receivedURL?.path, "/tmp/warm.md")
-        XCTAssertNil(AppDelegate.pendingURL,
-                     "warm path must not buffer — notification is the source of truth")
+        XCTAssertEqual(AppDelegate.pendingURL?.path, "/tmp/warm.md")
+        wait(for: [sawFile, sawFolder], timeout: 0.05)
+    }
+
+    func testOpenFileBufferIsObservable() {
+        // MainWindow watches LaunchURLBuffer.shared via @ObservedObject.
+        // Verify that handleOpenFile writes to that exact buffer.
+        AppDelegate.handleDidFinishLaunching(args: ["peek"])
+        AppDelegate.handleOpenFile("/tmp/observed.md")
+        XCTAssertEqual(LaunchURLBuffer.shared.pendingURL?.path, "/tmp/observed.md")
     }
 
     func testDidFinishLaunchingFallsBackToArgv() {
@@ -123,25 +136,19 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertNil(AppDelegate.consumePendingURL())
     }
 
-    func testFullColdStartSequenceDeliversURLToDrainer() throws {
-        // End-to-end simulation of a cold start:
-        //   1. LS calls application:openFile: (early)
-        //   2. applicationDidFinishLaunching fires (no post — unreliable race)
-        //   3. MainWindow.onAppear drains and re-posts through post(url:)
-        // Assert the final .peekOpenFile notification carries the right URL.
+    // Regression: cold-start ordering with didFinishLaunching firing FIRST
+    // — the variant that broke `peek <folder>`. Before the fix, openFile
+    // would post a notification that nothing was subscribed to. Now the URL
+    // lands in the observable buffer regardless.
+    func testColdStartWithDidFinishLaunchingBeforeOpenFile() throws {
         let dir = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let doc = dir.appendingPathComponent("cold.md")
-        try "hi".write(to: doc, atomically: true, encoding: .utf8)
 
-        AppDelegate.handleOpenFile(doc.path)                           // step 1
-        AppDelegate.handleDidFinishLaunching(args: ["peek"])          // step 2
+        AppDelegate.handleDidFinishLaunching(args: ["peek"])          // step 1: argv empty
+        AppDelegate.handleOpenFile(dir.path)                          // step 2: folder arrives late
 
-        let observer = NotificationCapture(name: .peekOpenFile)
-        if let url = AppDelegate.consumePendingURL() {                 // step 3
-            AppDelegate.post(url: url)
-        }
-        XCTAssertEqual(observer.receivedURL, doc)
+        XCTAssertEqual(AppDelegate.pendingURL?.path, dir.path,
+                       "Buffer must hold the URL even when openFile fires after didFinishLaunching")
     }
 
     func expectationInverted(for name: Notification.Name) -> XCTestExpectation {

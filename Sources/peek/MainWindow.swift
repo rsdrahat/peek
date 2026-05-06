@@ -5,6 +5,7 @@ import AppKit
 struct MainWindow: View {
     @StateObject private var document = MarkdownDocument()
     @StateObject private var folder = FolderBrowser()
+    @ObservedObject private var launchBuffer = LaunchURLBuffer.shared
     @Environment(\.colorScheme) private var systemScheme
     @State private var themeOverride: ColorScheme? = nil
 
@@ -44,25 +45,24 @@ struct MainWindow: View {
         .animation(.easeInOut(duration: 0.15), value: tocVisible)
         .animation(.easeInOut(duration: 0.15), value: folder.root)
         .animation(.easeInOut(duration: 0.15), value: sidebarCollapsed)
-        .onAppear {
-            // Drain any launch-time URL buffered by AppDelegate. We open
-            // `document` / `folder` directly rather than posting a
-            // NotificationCenter event: the .onReceive subscribers live on
-            // `contentBody` (a grandchild view), and SwiftUI does not
-            // guarantee those subscribers are attached before this .onAppear
-            // on the root body fires. On macOS 26.3 the race reliably loses
-            // and the notification is swallowed. Direct calls sidestep it.
-            if let url = AppDelegate.consumePendingURL() {
-                var isDir: ObjCBool = false
-                FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
-                RecentFilesStore.shared.add(url)
-                if isDir.boolValue {
-                    folder.open(rootURL: url)
-                } else {
-                    document.open(url: url)
-                }
-            }
+        .onAppear { handleLaunchURL(launchBuffer.pendingURL) }
+        .onChange(of: launchBuffer.pendingURL) { _, new in handleLaunchURL(new) }
+    }
+
+    /// Open whatever URL the launch buffer holds (cold-start argv,
+    /// `application:openFile:`, or warm-start re-invocations) and clear the
+    /// buffer so we don't re-act on the same URL.
+    private func handleLaunchURL(_ url: URL?) {
+        guard let url else { return }
+        var isDir: ObjCBool = false
+        FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+        RecentFilesStore.shared.add(url)
+        if isDir.boolValue {
+            folder.open(rootURL: url)
+        } else {
+            document.open(url: url)
         }
+        launchBuffer.pendingURL = nil
     }
 
     private var content: some View {
