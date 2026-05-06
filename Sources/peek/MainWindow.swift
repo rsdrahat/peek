@@ -5,6 +5,8 @@ import AppKit
 struct MainWindow: View {
     @StateObject private var document = MarkdownDocument()
     @StateObject private var folder = FolderBrowser()
+    @StateObject private var fileIndex = FileIndex()
+    @StateObject private var contentSearcher = ContentSearcher()
     @ObservedObject private var launchBuffer = LaunchURLBuffer.shared
     @Environment(\.colorScheme) private var systemScheme
     @State private var themeOverride: ColorScheme? = nil
@@ -18,6 +20,15 @@ struct MainWindow: View {
     @State private var tocVisible = false
     @State private var sidebarCollapsed: Bool = Pref.sidebarCollapsed
     @State private var sidebarWidth: Double = Pref.sidebarWidth
+
+    @State private var paletteVisible = false
+    @State private var paletteQuery = ""
+    @State private var paletteMode: PaletteMode = .files
+
+    enum PaletteMode: Equatable {
+        case files
+        case content
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -46,6 +57,20 @@ struct MainWindow: View {
         .animation(.easeInOut(duration: 0.15), value: tocVisible)
         .animation(.easeInOut(duration: 0.15), value: folder.root)
         .animation(.easeInOut(duration: 0.15), value: sidebarCollapsed)
+        .onChange(of: folder.root?.url) { _, newRoot in
+            fileIndex.build(root: newRoot, showAllFiles: folder.showAllFiles)
+        }
+        .onChange(of: folder.showAllFiles) { _, showAll in
+            fileIndex.build(root: folder.root?.url, showAllFiles: showAll)
+        }
+        .onChange(of: paletteQuery) { _, q in
+            if paletteMode == .content {
+                contentSearcher.search(query: q, in: fileIndex.files)
+            }
+        }
+        .onChange(of: paletteVisible) { _, visible in
+            if !visible { contentSearcher.clear() }
+        }
         .onAppear { handleLaunchURL(launchBuffer.pendingURL) }
         .onChange(of: launchBuffer.pendingURL) { _, new in handleLaunchURL(new) }
     }
@@ -109,8 +134,23 @@ struct MainWindow: View {
                 .padding(.top, 8)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
+
+            if paletteVisible {
+                CommandPalette(
+                    visible: $paletteVisible,
+                    query: $paletteQuery,
+                    items: paletteItems,
+                    placeholder: palettePlaceholder,
+                    emptyMessage: paletteEmptyMessage,
+                    modeLabel: paletteModeLabel,
+                    onActivate: handlePaletteActivation,
+                    onModeToggle: togglePaletteMode
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
+            }
         }
         .animation(.easeInOut(duration: 0.12), value: findVisible)
+        .animation(.easeInOut(duration: 0.12), value: paletteVisible)
         .navigationTitle(document.displayTitle)
         .onChange(of: findQuery) { _, q in
             if !q.isEmpty { issueFind(backwards: false) }
@@ -126,6 +166,8 @@ struct MainWindow: View {
             onReload: { document.reload() },
             onToggleTheme: { themeOverride = (effectiveTheme == .dark) ? .light : .dark },
             onFindOpen: { findVisible = true },
+            onPaletteOpen: { openPalette(mode: .files) },
+            onContentSearchOpen: { openPalette(mode: .content) },
             onZoomIn: { setZoom(zoom + Pref.zoomStep) },
             onZoomOut: { setZoom(zoom - Pref.zoomStep) },
             onZoomReset: { setZoom(Pref.defaultZoom) },
@@ -193,6 +235,128 @@ struct MainWindow: View {
             nonce: findRequest.nonce &+ 1
         )
     }
+
+    // MARK: - Palette
+
+    private var paletteItems: [PaletteItem] {
+        switch paletteMode {
+        case .files: return fuzzyFileItems
+        case .content: return contentMatchItems
+        }
+    }
+
+    /// Top-N fuzzy matches for the current query, scored against the relative
+    /// path of each indexed file.
+    private var fuzzyFileItems: [PaletteItem] {
+        guard let rootURL = folder.root?.url, !paletteQuery.isEmpty else { return [] }
+        let q = paletteQuery
+        let rootPath = rootURL.standardizedFileURL.path
+
+        var scored: [(score: Double, url: URL)] = []
+        scored.reserveCapacity(min(fileIndex.files.count, 1024))
+
+        for url in fileIndex.files {
+            let rel = relativePath(of: url, under: rootPath)
+            guard let s = FuzzyMatch.score(query: q, in: rel) else { continue }
+            scored.append((s, url))
+        }
+        scored.sort { $0.score > $1.score }
+
+        return scored.prefix(50).map { entry in
+            let rel = relativePath(of: entry.url, under: rootPath)
+            let dir = (rel as NSString).deletingLastPathComponent
+            return PaletteItem(
+                id: entry.url.path,
+                title: entry.url.lastPathComponent,
+                subtitle: dir.isEmpty ? nil : dir
+            )
+        }
+    }
+
+    private var contentMatchItems: [PaletteItem] {
+        guard let rootURL = folder.root?.url else { return [] }
+        let rootPath = rootURL.standardizedFileURL.path
+        return contentSearcher.matches.map { match in
+            let rel = relativePath(of: match.url, under: rootPath)
+            return PaletteItem(
+                id: "\(match.url.path):\(match.lineNumber)",
+                title: match.line.trimmingCharacters(in: .whitespaces),
+                subtitle: "\(rel):\(match.lineNumber)",
+                systemImage: "text.magnifyingglass"
+            )
+        }
+    }
+
+    private var paletteIsOpen: Bool { folder.root != nil }
+
+    private var palettePlaceholder: String {
+        switch paletteMode {
+        case .files: return paletteIsOpen ? "Search files in this folder…" : "Open a folder to search files"
+        case .content: return paletteIsOpen ? "Search file contents…" : "Open a folder to search contents"
+        }
+    }
+
+    private var paletteEmptyMessage: String? {
+        if !paletteIsOpen { return "Open a folder first (⌘⌥O) to search." }
+        switch paletteMode {
+        case .files:
+            if fileIndex.isBuilding && paletteQuery.isEmpty { return "Indexing files…" }
+            if paletteQuery.isEmpty { return "Type to search \(fileIndex.files.count) files in this folder…" }
+            return "No matches for \"\(paletteQuery)\""
+        case .content:
+            if paletteQuery.isEmpty { return "Type to search across file contents…" }
+            if contentSearcher.isSearching { return "Searching…" }
+            return "No matches for \"\(paletteQuery)\""
+        }
+    }
+
+    private func handlePaletteActivation(_ item: PaletteItem) {
+        // File mode: id is the absolute file path.
+        // Content mode: id is "path:lineNumber". Strip the line for now —
+        // jumping to a specific line in the rendered HTML is a separate
+        // problem (source-line → DOM offset mapping).
+        let path: String
+        if let colonIdx = item.id.lastIndex(of: ":"),
+           paletteMode == .content,
+           Int(item.id[item.id.index(after: colonIdx)...]) != nil {
+            path = String(item.id[..<colonIdx])
+        } else {
+            path = item.id
+        }
+        document.open(url: URL(fileURLWithPath: path))
+    }
+
+    private func openPalette(mode: PaletteMode) {
+        paletteMode = mode
+        paletteQuery = ""
+        paletteVisible = true
+        if mode == .content { contentSearcher.clear() }
+    }
+
+    private var paletteModeLabel: String {
+        switch paletteMode {
+        case .files: return "Files"
+        case .content: return "Content"
+        }
+    }
+
+    /// Toggle between file and content modes. Wipes the query because the
+    /// mode change shifts what the query *means* — file fuzzy match vs.
+    /// content substring scan — and stale text would just produce confusing
+    /// results.
+    private func togglePaletteMode() {
+        paletteMode = (paletteMode == .files) ? .content : .files
+        paletteQuery = ""
+        contentSearcher.clear()
+    }
+
+    private func relativePath(of url: URL, under rootPath: String) -> String {
+        let p = url.standardizedFileURL.path
+        if p.hasPrefix(rootPath + "/") {
+            return String(p.dropFirst(rootPath.count + 1))
+        }
+        return p
+    }
 }
 
 private struct NotificationBridge: ViewModifier {
@@ -203,6 +367,8 @@ private struct NotificationBridge: ViewModifier {
     let onReload: () -> Void
     let onToggleTheme: () -> Void
     let onFindOpen: () -> Void
+    let onPaletteOpen: () -> Void
+    let onContentSearchOpen: () -> Void
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
     let onZoomReset: () -> Void
@@ -224,6 +390,8 @@ private struct NotificationBridge: ViewModifier {
             .onReceive(NotificationCenter.default.publisher(for: .peekReload)) { _ in onReload() }
             .onReceive(NotificationCenter.default.publisher(for: .peekToggleTheme)) { _ in onToggleTheme() }
             .onReceive(NotificationCenter.default.publisher(for: .peekFindOpen)) { _ in onFindOpen() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekPaletteOpen)) { _ in onPaletteOpen() }
+            .onReceive(NotificationCenter.default.publisher(for: .peekContentSearchOpen)) { _ in onContentSearchOpen() }
             .onReceive(NotificationCenter.default.publisher(for: .peekZoomIn)) { _ in onZoomIn() }
             .onReceive(NotificationCenter.default.publisher(for: .peekZoomOut)) { _ in onZoomOut() }
             .onReceive(NotificationCenter.default.publisher(for: .peekZoomReset)) { _ in onZoomReset() }
