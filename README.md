@@ -82,8 +82,9 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the stack rationale and project layou
 - **v0.1 MVP** — render, watch, theme, GFM, drag-drop ✅
 - **v0.2 Polish** — window state, scroll memory, zoom, print/export ✅
 - **v0.3 Folder mode** — sidebar tree, vim nav, breadcrumb, inter-doc links, Open Recent ✅
-- **v0.4 Editor** — split view, live preview
-- **v0.5 Themes** — custom CSS, font presets
+- **v0.4 Search** — fuzzy file finder (Cmd+P) + content search (Cmd+Shift+F)
+- **v0.5 Data viewers** — JSON / JSONL / YAML / TOML, same shell
+- **v0.6 Themes** — custom CSS, font presets
 
 [All issues →](https://github.com/rsdrahat/peek/issues)
 
