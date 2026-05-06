@@ -13,19 +13,24 @@ final class FolderBrowser: ObservableObject {
     @Published private(set) var loadedChildren: [URL: [FolderNode]] = [:]
 
     @Published var showAllFiles: Bool = false {
-        didSet { rebuild() }
+        didSet { rebuildSync() }
     }
 
     private var rootURL: URL?
     private var watcher: FolderWatcher?
 
-    static let markdownExtensions: Set<String> = ["md", "markdown", "mdown", "mkd"]
+    /// Serial queue for off-main directory walks triggered by FSEvents and
+    /// manual refresh. Initial open and showAllFiles toggle stay sync — the
+    /// user is waiting and one level is sub-millisecond anyway.
+    private let rebuildQueue = DispatchQueue(label: "peek.folderbrowser.rebuild", qos: .userInitiated)
+
+    nonisolated static let markdownExtensions: Set<String> = ["md", "markdown", "mdown", "mkd"]
 
     /// Directories that are virtually never useful to browse. Skipped in
     /// markdown-only mode; revealed when "show all files" is on. Dot-dirs
     /// (`.git`, `.build`, `.next`, …) are already filtered separately, so
     /// only non-dot offenders need to be listed here.
-    static let ignoredDirNames: Set<String> = [
+    nonisolated static let ignoredDirNames: Set<String> = [
         "node_modules",
         "__pycache__",
         "target",
@@ -38,9 +43,9 @@ final class FolderBrowser: ObservableObject {
 
     func open(rootURL url: URL) {
         self.rootURL = url
-        rebuild()
+        rebuildSync()
         watcher = FolderWatcher(url: url) { [weak self] in
-            self?.rebuild()
+            self?.rebuildAsync()
         }
     }
 
@@ -54,7 +59,7 @@ final class FolderBrowser: ObservableObject {
     /// Force a tree rebuild from disk. FSEvents covers the common case;
     /// this exists as a manual fallback (network mounts, missed events).
     func refresh() {
-        rebuild()
+        rebuildAsync()
     }
 
     /// Populate the children of `url` if not already loaded. Called by the
@@ -66,7 +71,10 @@ final class FolderBrowser: ObservableObject {
 
     var isOpen: Bool { rootURL != nil }
 
-    private func rebuild() {
+    /// Synchronous rebuild — used for the initial open and the showAllFiles
+    /// toggle, where the user is actively waiting and we want the next paint
+    /// to reflect the new state.
+    private func rebuildSync() {
         guard let url = rootURL else {
             root = nil
             loadedChildren = [:]
@@ -75,8 +83,6 @@ final class FolderBrowser: ObservableObject {
         let topLevel = Self.listChildren(of: url, showAllFiles: showAllFiles)
         root = FolderNode(url: url, isDirectory: true, children: topLevel)
 
-        // Refresh subtrees that were already loaded so they reflect current
-        // disk state. Drop entries whose directory has disappeared.
         let fm = FileManager.default
         var refreshed: [URL: [FolderNode]] = [:]
         for cached in loadedChildren.keys {
@@ -87,10 +93,39 @@ final class FolderBrowser: ObservableObject {
         loadedChildren = refreshed
     }
 
+    /// Off-main rebuild — used for FSEvents firings and manual refresh, where
+    /// blocking the main thread would mean a stutter or beach-ball during
+    /// scroll. Walks happen on a serial queue so a burst of FSEvents doesn't
+    /// race; results that arrive after the user closed or toggled showAllFiles
+    /// are discarded.
+    private func rebuildAsync() {
+        guard let url = rootURL else { return }
+        let showAll = showAllFiles
+        let cachedURLs = Array(loadedChildren.keys)
+
+        rebuildQueue.async {
+            let topLevel = Self.listChildren(of: url, showAllFiles: showAll)
+            let fm = FileManager.default
+            var refreshed: [URL: [FolderNode]] = [:]
+            for cached in cachedURLs {
+                var isDir: ObjCBool = false
+                guard fm.fileExists(atPath: cached.path, isDirectory: &isDir), isDir.boolValue else { continue }
+                refreshed[cached] = Self.listChildren(of: cached, showAllFiles: showAll)
+            }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                // Discard if state changed while we were off-main.
+                guard self.rootURL == url, self.showAllFiles == showAll else { return }
+                self.root = FolderNode(url: url, isDirectory: true, children: topLevel)
+                self.loadedChildren = refreshed
+            }
+        }
+    }
+
     /// One level of `url` — fast, no recursion. Filters dot-files, the
     /// `ignoredDirNames` set (in md-only mode), and non-markdown files
     /// (in md-only mode).
-    static func listChildren(of url: URL, showAllFiles: Bool) -> [FolderNode] {
+    nonisolated static func listChildren(of url: URL, showAllFiles: Bool) -> [FolderNode] {
         let fm = FileManager.default
         guard let entries = try? fm.contentsOfDirectory(
             at: url,

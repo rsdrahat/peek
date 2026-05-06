@@ -120,7 +120,34 @@ final class FlatRowTests: XCTestCase {
         XCTAssertEqual(browser.loadedChildren[aURL]?.map(\.name), ["inside.md"])
     }
 
-    func testRebuildDropsCacheForRemovedDirectories() throws {
+    func testRefreshAppliesNewChildrenOffMain() async throws {
+        try write("a.md")
+        let browser = FolderBrowser()
+        browser.open(rootURL: tmp)
+        XCTAssertEqual(browser.root?.children?.count, 1)
+
+        // refresh() is async (off-main). The new file isn't reflected
+        // synchronously — we have to await the apply.
+        try write("b.md")
+        browser.refresh()
+        try await waitUntilTrue { browser.root?.children?.count == 2 }
+        let names = (browser.root?.children ?? []).map(\.name).sorted()
+        XCTAssertEqual(names, ["a.md", "b.md"])
+    }
+
+    func testRefreshAfterCloseIsNoop() async throws {
+        try write("a.md")
+        let browser = FolderBrowser()
+        browser.open(rootURL: tmp)
+        browser.close()
+        // Stale dispatched work must not resurrect state on a closed browser.
+        browser.refresh()
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertNil(browser.root)
+        XCTAssertEqual(browser.loadedChildren.count, 0)
+    }
+
+    func testRebuildDropsCacheForRemovedDirectories() async throws {
         try mkdir("gone")
         let browser = FolderBrowser()
         browser.open(rootURL: tmp)
@@ -129,7 +156,22 @@ final class FlatRowTests: XCTestCase {
         XCTAssertNotNil(browser.loadedChildren[goneURL])
 
         try FileManager.default.removeItem(at: goneURL)
-        browser.refresh()
+        browser.refresh()  // off-main; wait for the result to apply
+        try await waitUntilTrue { browser.loadedChildren[goneURL] == nil }
         XCTAssertNil(browser.loadedChildren[goneURL])
+    }
+
+    private func waitUntilTrue(
+        timeout: TimeInterval = 1.0,
+        _ predicate: @MainActor () -> Bool
+    ) async throws {
+        let start = Date()
+        while !predicate() {
+            if Date().timeIntervalSince(start) > timeout {
+                XCTFail("predicate not met within \(timeout)s")
+                return
+            }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
     }
 }
