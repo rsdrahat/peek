@@ -15,6 +15,10 @@ struct MarkdownWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.allowsContentJavaScript = true
+        // Non-persistent data store: no disk cookies / cache / localStorage
+        // accretion across launches. We're a viewer, not a browser — there's
+        // no legitimate per-document state worth persisting in WebKit.
+        config.websiteDataStore = .nonPersistent()
         let userContent = WKUserContentController()
         userContent.add(context.coordinator, name: "peekScroll")
         config.userContentController = userContent
@@ -35,13 +39,30 @@ struct MarkdownWebView: NSViewRepresentable {
         let themeChanged = coord.lastTheme != theme
         let baseChanged = coord.lastBaseURL != baseURL
         let fileChanged = coord.lastFileURL != fileURL
+        let firstLoad = coord.lastBody == nil
 
         if coord.lastZoom != zoom {
             view.pageZoom = CGFloat(zoom)
             coord.lastZoom = zoom
         }
 
-        if bodyChanged || baseChanged || fileChanged || coord.lastBody == nil {
+        // Hot-reload path: same file, just the body changed. Swap <main>
+        // innerHTML in place rather than nuking the page with loadHTMLString.
+        // Keeps WebKit's parsed JS (highlight.js is ~1MB), preserves scroll
+        // position, and avoids re-allocating the page payload on every save.
+        let inPlaceSwap = bodyChanged && !baseChanged && !fileChanged && !firstLoad && !themeChanged
+        if inPlaceSwap {
+            let payload = Self.jsStringLiteral(html)
+            let js = """
+            (function(){
+              var main = document.querySelector('main.page');
+              if (!main) return;
+              main.innerHTML = \(payload);
+              if (window.hljs) { try { hljs.highlightAll(); } catch (e) {} }
+            })();
+            """
+            view.evaluateJavaScript(js, completionHandler: nil)
+        } else if bodyChanged || baseChanged || fileChanged || firstLoad {
             coord.pendingFileURL = fileURL
             let effectiveBase = baseURL ?? PeekResources.bundle.resourceURL
             view.loadHTMLString(Self.shell(body: html, theme: theme),
@@ -127,22 +148,18 @@ struct MarkdownWebView: NSViewRepresentable {
 
     static func shell(body: String, theme: ColorScheme) -> String {
         let themeAttr = theme == .dark ? "dark" : "light"
-        let base = loadResource("base.css")
-        let hljsLight = loadResource("hljs-light.css")
-        let hljsDark = loadResource("hljs-dark.css")
-        let hljs = loadResource("highlight.min.js")
         return """
         <!doctype html>
         <html data-theme="\(themeAttr)">
         <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
-        <style>\(base)</style>
-        <style id="hljs-light"\(theme == .dark ? " disabled" : "")>\(hljsLight)</style>
-        <style id="hljs-dark"\(theme == .dark ? "" : " disabled")>\(hljsDark)</style>
+        <style>\(cachedBaseCSS)</style>
+        <style id="hljs-light"\(theme == .dark ? " disabled" : "")>\(cachedHljsLightCSS)</style>
+        <style id="hljs-dark"\(theme == .dark ? "" : " disabled")>\(cachedHljsDarkCSS)</style>
         </head>
         <body><main class="page">\(body)</main>
-        <script>\(hljs)</script>
+        <script>\(cachedHljsJS)</script>
         <script>
         hljs.highlightAll();
         (function(){
@@ -166,8 +183,29 @@ struct MarkdownWebView: NSViewRepresentable {
         return ext == "md" || ext == "markdown" || ext == "mdown"
     }
 
+    // MARK: - Cached resource strings
+    //
+    // Read once at first use, retained for the life of the process. Avoids
+    // re-allocating ~1MB of highlight.min.js on every body change, which is
+    // the hot path during vibecoding (file saves → re-render → update view).
+    private static let cachedBaseCSS: String = loadResource("base.css")
+    private static let cachedHljsLightCSS: String = loadResource("hljs-light.css")
+    private static let cachedHljsDarkCSS: String = loadResource("hljs-dark.css")
+    private static let cachedHljsJS: String = loadResource("highlight.min.js")
+
     private static func loadResource(_ name: String) -> String {
         let url = PeekResources.bundle.url(forResource: "Resources/\(name)", withExtension: nil)
         return (url.flatMap { try? String(contentsOf: $0) }) ?? ""
+    }
+
+    /// JSON-encode `s` as a JS string literal (including outer quotes). Safe
+    /// to interpolate into `evaluateJavaScript` without worrying about quote /
+    /// newline / unicode escaping in user-controlled content.
+    static func jsStringLiteral(_ s: String) -> String {
+        let data = (try? JSONSerialization.data(withJSONObject: [s], options: []))
+            ?? Data("[\"\"]".utf8)
+        guard let str = String(data: data, encoding: .utf8) else { return "\"\"" }
+        // str is "[\"...escaped...\"]" — strip the brackets to get the literal.
+        return String(str.dropFirst().dropLast())
     }
 }
