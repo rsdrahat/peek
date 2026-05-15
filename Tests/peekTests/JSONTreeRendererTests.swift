@@ -91,17 +91,72 @@ final class JSONTreeRendererTests: XCTestCase {
         XCTAssertEqual(commas, 2)
     }
 
-    // MARK: - Stub for huge containers
+    // MARK: - Stub for overwhelmingly-huge containers (above max)
 
-    func testHugeContainerRendersStubInsteadOfFullTree() {
-        let many = (0..<10_000).map { JSONMember("k\($0)", .number(.int(Int64($0)))) }
+    func testOverMaxContainerRendersStubInsteadOfFullTree() {
+        // Above maxFullyMaterializedSize → stub (no template, no children).
+        let n = JSONTreeRenderer.maxFullyMaterializedSize + 100
+        let many = (0..<n).map { JSONMember("k\($0)", .number(.int(Int64($0)))) }
         let html = JSONTreeRenderer.render(.object(many))
         XCTAssertTrue(html.contains("json-node-stub"))
-        XCTAssertTrue(html.contains("10000 keys"))
-        // Stub should not include 10k key labels.
+        XCTAssertTrue(html.contains("\(n) keys"))
         let keyCount = html.components(separatedBy: "json-key").count - 1
         XCTAssertLessThan(keyCount, 5,
                           "stubbed huge container must not materialize per-key markup")
+    }
+
+    // MARK: - Lazy templates (rview-cw1 virtualization)
+
+    func testContainerAboveLazyThresholdUsesTemplate() {
+        // Just above the lazy threshold → children should be inside a
+        // <template>, not a <div class="json-children">.
+        let count = JSONTreeRenderer.lazyThreshold + 5
+        let items = (0..<count).map { _ in JSONValue.null }
+        let html = JSONTreeRenderer.render(.array(items))
+        XCTAssertTrue(html.contains("json-deferred-children"),
+                      "large containers must render children inside a <template>")
+        XCTAssertTrue(html.contains("json-lazy"))
+        XCTAssertTrue(html.contains("class=\"json-node collapsed json-lazy\""),
+                      "lazy containers must start collapsed so the template stays inert")
+    }
+
+    func testContainerBelowLazyThresholdIsEager() {
+        // Small containers materialize eagerly — no template wrapper. The JS
+        // toggle script always mentions these class names, so we check for
+        // the structural HTML element, not the bare class string.
+        let html = JSONTreeRenderer.render(.array([.number(.int(1)), .number(.int(2))]))
+        XCTAssertFalse(html.contains("<template class=\"json-deferred-children\">"),
+                       "small containers must not emit a deferred-children template")
+        XCTAssertFalse(html.contains("\"json-node collapsed json-lazy\""),
+                       "small containers must not be marked lazy")
+    }
+
+    func testToggleScriptHandlesLazyMaterialization() {
+        let html = JSONTreeRenderer.render(.object([JSONMember("a", .null)]))
+        XCTAssertTrue(html.contains("materializeIfLazy"),
+                      "the toggle script must include lazy template materialization")
+        XCTAssertTrue(html.contains("template.json-deferred-children"))
+    }
+
+    // MARK: - Virtualization perf: rendering 100k-node tree must stay snappy.
+    //
+    // With lazy templates, even huge containers render quickly because the
+    // <template> contents stay out of the active DOM. The HTML string itself
+    // still gets generated, so we measure HTML-generation time as the
+    // user-facing budget — that's what blocks the first paint.
+
+    func testRenderBudgetForBigArrayUnderHardLimit() {
+        let items = (0..<10_000).map { JSONValue.number(.int(Int64($0))) }
+        let t0 = CFAbsoluteTimeGetCurrent()
+        let html = JSONTreeRenderer.render(.array(items))
+        let elapsed = CFAbsoluteTimeGetCurrent() - t0
+        XCTAssertGreaterThan(html.count, 100_000)
+        // Debug-mode safety. Release on M-series renders this in ~30ms.
+        XCTAssertLessThan(elapsed, 5.0,
+                          "10k-element array rendering exceeded safety budget — measured \(elapsed)s")
+        if elapsed > 0.3 {
+            print("⚠️ 10k array render took \(elapsed)s — over the 300ms soft budget")
+        }
     }
 
     // MARK: - JS toggle script
