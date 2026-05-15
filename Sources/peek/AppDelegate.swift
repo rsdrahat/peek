@@ -65,6 +65,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Self.handleOpenFile(filename)
     }
 
+    /// Modern URL-delivery callback. macOS 13+ prefers this over the legacy
+    /// `application(_:openFile:)`, and on macOS 26 (Tahoe / Darwin 25)
+    /// openFile may not fire at all when openURLs is implemented — which
+    /// silently dropped folder args before this method existed (rview-w4q).
+    ///
+    /// peek's main window is single-document, so on a multi-URL drop we
+    /// keep only the first one. The rest are noise from the user's mistake;
+    /// resist the temptation to open multiple windows here.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard let first = urls.first else { return }
+        Self.handleOpenURL(first)
+    }
+
+    /// URL-typed variant of `handleOpenFile`. Same buffer-write semantics —
+    /// `URL(fileURLWithPath:)` is preserved only as the legacy-callback
+    /// adapter; URLs arriving via the modern callback are already
+    /// well-formed and need no path-string round-trip.
+    @discardableResult
+    static func handleOpenURL(_ url: URL) -> Bool {
+        pendingURL = url
+        return true
+    }
+
     static func post(url: URL) {
         var isDir: ObjCBool = false
         FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
