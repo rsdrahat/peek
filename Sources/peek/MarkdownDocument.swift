@@ -40,6 +40,17 @@ final class MarkdownDocument: ObservableObject {
             displayTitle = url.lastPathComponent + " (missing)"
             return
         }
+        switch url.peekDocumentKind {
+        case .json:
+            renderJSON(url: url)
+        case .jsonl:
+            renderJSONL(url: url)
+        case .markdown, .unknown:
+            renderMarkdown(url: url)
+        }
+    }
+
+    private func renderMarkdown(url: URL) {
         do {
             let source = try String(contentsOf: url, encoding: .utf8)
             let result = renderer.render(source)
@@ -49,6 +60,44 @@ final class MarkdownDocument: ObservableObject {
         } catch {
             html = Self.readErrorHTML(url: url, error: error)
             toc = []
+        }
+    }
+
+    private func renderJSON(url: URL) {
+        toc = []
+        do {
+            let data = try Data(contentsOf: url)
+            let source = String(data: data, encoding: .utf8) ?? ""
+            do {
+                let value = try JSONParser.parse(data: data)
+                html = JSONDocument.previewHTML(value: value, source: source)
+            } catch let e as JSONParseError {
+                html = JSONDocument.parseErrorHTML(error: e, source: source)
+            }
+            displayTitle = url.lastPathComponent
+        } catch {
+            html = Self.readErrorHTML(url: url, error: error)
+        }
+    }
+
+    private func renderJSONL(url: URL) {
+        toc = []
+        // Placeholder: real JSONL renderer lands in the jsonl-line-virtualization
+        // bead. For now, show the source verbatim so users at least see their
+        // data and the file is "open" (sidebar / breadcrumb / watching work).
+        do {
+            let source = try String(contentsOf: url, encoding: .utf8)
+            let line = source.split(separator: "\n", omittingEmptySubsequences: true).count
+            html = """
+            <section class="peek-data-summary">
+              <span class="peek-data-badge">JSONL</span>
+              <span class="peek-data-summary-text">\(line) lines — full viewer coming in v0.5</span>
+            </section>
+            <pre class="peek-data-source"><code>\(JSONDocument.htmlEscape(source))</code></pre>
+            """
+            displayTitle = url.lastPathComponent
+        } catch {
+            html = Self.readErrorHTML(url: url, error: error)
         }
     }
 
