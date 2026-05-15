@@ -29,12 +29,20 @@ public struct JSONTreeRenderer {
     }
 
     public static func render(_ value: JSONValue) -> String {
+        renderHTML(value) + treeToggleScript
+    }
+
+    /// HTML-only render — same tree, no `<script>` tail. Callers that
+    /// render many trees on a page (e.g. JSONL) emit the script once.
+    public static func renderHTML(_ value: JSONValue) -> String {
         var out = "<div class=\"json-tree\">"
         renderValue(value, key: nil, path: [], into: &out)
         out += "</div>"
-        out += treeToggleScript
         return out
     }
+
+    /// The vanilla-JS toggle/copy/search script. Emit once per page.
+    public static var script: String { treeToggleScript }
 
     private static func renderValue(_ v: JSONValue, key: String?, path: [PathSegment], into out: inout String) {
         switch v {

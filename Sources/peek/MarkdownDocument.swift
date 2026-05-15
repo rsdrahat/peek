@@ -82,18 +82,22 @@ final class MarkdownDocument: ObservableObject {
 
     private func renderJSONL(url: URL) {
         toc = []
-        // Placeholder: real JSONL renderer lands in the jsonl-line-virtualization
-        // bead. For now, show the source verbatim so users at least see their
-        // data and the file is "open" (sidebar / breadcrumb / watching work).
         do {
             let source = try String(contentsOf: url, encoding: .utf8)
-            let line = source.split(separator: "\n", omittingEmptySubsequences: true).count
+            let entries = JSONLRenderer.parse(source)
+            let errorCount = entries.filter { $0.error != nil }.count
+            let summary: String
+            if errorCount > 0 {
+                summary = "\(entries.count) lines · \(errorCount) parse error\(errorCount == 1 ? "" : "s")"
+            } else {
+                summary = "\(entries.count) line\(entries.count == 1 ? "" : "s")"
+            }
             html = """
             <section class="peek-data-summary">
               <span class="peek-data-badge">JSONL</span>
-              <span class="peek-data-summary-text">\(line) lines — full viewer coming in v0.5</span>
+              <span class="peek-data-summary-text">\(summary)</span>
             </section>
-            <pre class="peek-data-source"><code>\(JSONDocument.htmlEscape(source))</code></pre>
+            \(JSONLRenderer.render(entries: entries, totalLines: entries.count))
             """
             displayTitle = url.lastPathComponent
         } catch {
