@@ -181,6 +181,52 @@ input[type="checkbox"] { accent-color: var(--accent); margin-right: 0.4em; }
   border-radius: 6px;
 }
 
+/* JSON tree viewer (v0.5) */
+.json-tree {
+  font-family: var(--mono);
+  font-size: 0.875em;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.json-line {
+  display: flex;
+  align-items: baseline;
+}
+.json-toggle, .json-toggle-spacer {
+  width: 1.1em;
+  display: inline-block;
+  flex: 0 0 auto;
+  text-align: center;
+}
+.json-toggle {
+  cursor: pointer;
+  user-select: none;
+  color: var(--muted);
+  transition: transform 0.1s ease;
+}
+.json-toggle:hover { color: var(--fg); }
+.json-children { padding-left: 1.4em; }
+.json-key { color: var(--accent); }
+.json-key + .json-punct { margin-right: 0.4em; }
+.json-string { color: #2aa198; }
+.json-number { color: #d33682; }
+.json-bool   { color: #6c71c4; }
+.json-null   { color: var(--muted); font-style: italic; }
+.json-bracket, .json-punct, .json-comma { color: var(--muted); }
+.json-summary { color: var(--muted); font-style: italic; opacity: 0.75; }
+.json-node-stub .json-summary { opacity: 1.0; }
+
+/* Toggle states. Expanded by default: hide the inline summary + inline
+   close; show the children block + the dedicated close-line.
+   Collapsed: invert. */
+.json-summary,
+.json-bracket-close-inline { display: none; }
+.json-node.collapsed > .json-children,
+.json-node.collapsed > .json-close-line { display: none; }
+.json-node.collapsed > .json-line .json-summary,
+.json-node.collapsed > .json-line .json-bracket-close-inline { display: inline; }
+.json-node.collapsed > .json-line .json-toggle { transform: rotate(-90deg); }
+
 /* hljs theme override: gate by data-theme so we can ship both. */
 :root[data-theme="light"] .hljs-wrapper-light { display: block; }
 :root[data-theme="light"] .hljs-wrapper-dark { display: none; }

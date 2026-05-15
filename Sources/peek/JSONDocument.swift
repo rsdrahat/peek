@@ -69,17 +69,16 @@ final class JSONDocument: ObservableObject {
         }
     }
 
-    /// Minimal "we parsed it OK" rendering. The real tree comes in the next
-    /// PR. For now: a quick summary chip + the source pretty-printed in a
-    /// `<pre>` so users at least see their data and aren't staring at white.
+    /// "We parsed it OK" rendering: summary chip + collapsible tree.
     static func previewHTML(value: JSONValue, source: String) -> String {
+        _ = source  // retained for potential raw-toggle in a later PR
         let summary = summaryLine(for: value)
         return """
         <section class="peek-data-summary">
           <span class="peek-data-badge">JSON</span>
           <span class="peek-data-summary-text">\(escape(summary))</span>
         </section>
-        <pre class="peek-data-source"><code>\(escape(source))</code></pre>
+        \(JSONTreeRenderer.render(value))
         """
     }
 
