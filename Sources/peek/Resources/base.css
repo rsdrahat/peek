@@ -249,6 +249,39 @@ input[type="checkbox"] { accent-color: var(--accent); margin-right: 0.4em; }
 .json-node.collapsed > .json-line .json-bracket-close-inline { display: inline; }
 .json-node.collapsed > .json-line .json-toggle { transform: rotate(-90deg); }
 
+/* JSONL viewer rows (v0.5) */
+.jsonl-tree {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+.jsonl-row {
+  padding: 0.1em 0;
+  border-left: 2px solid transparent;
+}
+.jsonl-row:hover { border-left-color: var(--rule); background: var(--code-bg); }
+.jsonl-line-number {
+  display: inline-block;
+  min-width: 3.2em;
+  padding-right: 0.7em;
+  text-align: right;
+  color: var(--muted);
+  opacity: 0.6;
+  user-select: none;
+}
+.jsonl-preview { color: var(--fg); white-space: pre; }
+.jsonl-row-error { background: rgba(220, 50, 50, 0.06); }
+.jsonl-error-msg { color: #d33; font-style: italic; }
+.jsonl-banner {
+  background: var(--code-bg);
+  border-radius: 6px;
+  padding: 0.6em 0.9em;
+  margin: 0 0 0.8em 0;
+  font-family: var(--sans);
+  font-size: 0.85em;
+  color: var(--muted);
+}
+
 /* hljs theme override: gate by data-theme so we can ship both. */
 :root[data-theme="light"] .hljs-wrapper-light { display: block; }
 :root[data-theme="light"] .hljs-wrapper-dark { display: none; }
