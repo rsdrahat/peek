@@ -9,9 +9,17 @@ import Foundation
 /// HTML pass. Virtualization (visible-row windowing for 100k-node trees)
 /// arrives in the tree-virtualization PR.
 public struct JSONTreeRenderer {
-    /// Maximum container size we will fully materialize. Above this, we
-    /// render a stub. Real virtualization replaces this in the next PR.
-    public static let maxFullyMaterializedSize: Int = 5_000
+    /// Above this size, the container's children render into an HTML
+    /// `<template>` element instead of live DOM. Templates aren't parsed
+    /// into the active tree until cloned, so the initial render stays cheap
+    /// even for huge files — the cost is paid on expand, per subtree.
+    public static let lazyThreshold: Int = 50
+
+    /// Hard ceiling for fully-materialized tree HTML. Above this, an array
+    /// or object renders as a stub even *inside a template*, because the
+    /// raw HTML string would itself be too large. The JSONL line-virtualization
+    /// PR is where huge top-level arrays get a different code path.
+    public static let maxFullyMaterializedSize: Int = 100_000
 
     public static func render(_ value: JSONValue) -> String {
         var out = "<div class=\"json-tree\">"
@@ -87,7 +95,14 @@ public struct JSONTreeRenderer {
             return
         }
 
-        out += #"<div class="json-node" data-kind="\#(kind)">"#
+        let isLazy = count >= lazyThreshold
+        // Large containers start collapsed AND their children render into
+        // a <template>. Templates' content stays out of the active DOM
+        // until the user expands — that's the virtualization win. Small
+        // containers materialize eagerly so they're instant to interact with.
+        let classes = isLazy ? "json-node collapsed json-lazy" : "json-node"
+
+        out += #"<div class="\#(classes)" data-kind="\#(kind)">"#
         // header line — expanded form
         out += #"<div class="json-line">"#
         out += #"<span class="json-toggle" data-toggle>▾</span>"#
@@ -97,10 +112,18 @@ public struct JSONTreeRenderer {
         out += " <span class=\"json-summary\">\(summaryText(kind: kind, count: count))</span> "
         out += "<span class=\"json-bracket json-bracket-close-inline\">\(close)</span>"
         out += "</div>"
-        // children
-        out += #"<div class="json-children">"#
-        renderChildren(&out)
-        out += "</div>"
+
+        if isLazy {
+            // Children deferred: emit inside a <template>. The toggle script
+            // materializes it on first expand.
+            out += #"<template class="json-deferred-children">"#
+            renderChildren(&out)
+            out += "</template>"
+        } else {
+            out += #"<div class="json-children">"#
+            renderChildren(&out)
+            out += "</div>"
+        }
         // close line — expanded form
         out += #"<div class="json-line json-close-line">"#
         out += #"<span class="json-toggle-spacer"></span>"#
@@ -192,18 +215,40 @@ public struct JSONTreeRenderer {
     private static let treeToggleScript = """
     <script>
     (function(){
+      function materializeIfLazy(node) {
+        if (!node.classList.contains('json-lazy')) return;
+        var tpl = node.querySelector(':scope > template.json-deferred-children');
+        if (!tpl) { node.classList.remove('json-lazy'); return; }
+        var wrap = document.createElement('div');
+        wrap.className = 'json-children';
+        wrap.appendChild(tpl.content.cloneNode(true));
+        tpl.parentNode.insertBefore(wrap, tpl);
+        tpl.remove();
+        node.classList.remove('json-lazy');
+      }
+
       document.addEventListener('click', function(ev) {
         var t = ev.target.closest('[data-toggle]');
         if (!t) return;
         var node = t.closest('.json-node');
         if (!node) return;
+        var expanding = node.classList.contains('collapsed');
         if (ev.altKey) {
           var shouldCollapse = !node.classList.contains('collapsed');
+          // If we're about to expand the cascade, materialize lazy
+          // templates first so descendants can be toggled.
+          if (!shouldCollapse) materializeIfLazy(node);
           node.classList.toggle('collapsed', shouldCollapse);
-          node.querySelectorAll('.json-node').forEach(function(n){
-            n.classList.toggle('collapsed', shouldCollapse);
-          });
+          var walk = function(root) {
+            root.querySelectorAll(':scope > .json-children .json-node').forEach(function(n){
+              if (!shouldCollapse) materializeIfLazy(n);
+              n.classList.toggle('collapsed', shouldCollapse);
+              walk(n);
+            });
+          };
+          walk(node);
         } else {
+          if (expanding) materializeIfLazy(node);
           node.classList.toggle('collapsed');
         }
         ev.stopPropagation();
