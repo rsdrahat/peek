@@ -206,7 +206,29 @@ input[type="checkbox"] { accent-color: var(--accent); margin-right: 0.4em; }
 }
 .json-toggle:hover { color: var(--fg); }
 .json-children { padding-left: 1.4em; }
-.json-key { color: var(--accent); }
+.json-key {
+  color: var(--accent);
+  cursor: pointer;
+}
+.json-key:hover { text-decoration: underline; }
+#peek-toast {
+  position: fixed;
+  bottom: 1.5em;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: var(--bg);
+  padding: 0.45em 0.95em;
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  font-family: var(--sans);
+  font-size: 0.85em;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+}
+#peek-toast.show { opacity: 1; }
 .json-key + .json-punct { margin-right: 0.4em; }
 .json-string { color: #2aa198; }
 .json-number { color: #d33682; }

@@ -21,35 +21,44 @@ public struct JSONTreeRenderer {
     /// PR is where huge top-level arrays get a different code path.
     public static let maxFullyMaterializedSize: Int = 100_000
 
+    /// A segment of a JSON value's path from the root. Encoded into both
+    /// dotted (`foo.bar[0]`) and JSON-pointer (`/foo/bar/0`) forms on demand.
+    public enum PathSegment: Equatable, Sendable {
+        case key(String)
+        case index(Int)
+    }
+
     public static func render(_ value: JSONValue) -> String {
         var out = "<div class=\"json-tree\">"
-        renderValue(value, key: nil, into: &out)
+        renderValue(value, key: nil, path: [], into: &out)
         out += "</div>"
         out += treeToggleScript
         return out
     }
 
-    private static func renderValue(_ v: JSONValue, key: String?, into out: inout String) {
+    private static func renderValue(_ v: JSONValue, key: String?, path: [PathSegment], into out: inout String) {
         switch v {
         case .object(let members):
             renderContainer(open: "{", close: "}", count: members.count, kind: "object",
-                            key: key, into: &out, renderChildren: { o in
+                            key: key, path: path, into: &out, renderChildren: { o in
                 for (i, m) in members.enumerated() {
                     let isLast = i == members.count - 1
-                    renderChildLine(key: m.key, value: m.value, isLast: isLast, into: &o)
+                    let childPath = path + [.key(m.key)]
+                    renderChildLine(key: m.key, value: m.value, path: childPath, isLast: isLast, into: &o)
                 }
             })
         case .array(let items):
             renderContainer(open: "[", close: "]", count: items.count, kind: "array",
-                            key: key, into: &out, renderChildren: { o in
+                            key: key, path: path, into: &out, renderChildren: { o in
                 for (i, item) in items.enumerated() {
                     let isLast = i == items.count - 1
-                    renderChildLine(key: nil, value: item, isLast: isLast, into: &o)
+                    let childPath = path + [.index(i)]
+                    renderChildLine(key: nil, value: item, path: childPath, isLast: isLast, into: &o)
                 }
             })
         case .string, .number, .bool, .null:
             // A top-level scalar — single row, no container chrome.
-            out += #"<div class="json-line">"#
+            out += #"<div class="json-line"\#(pathAttributes(path))>"#
             out += #"<span class="json-toggle-spacer"></span>"#
             if let key { out += keyHTML(key) }
             out += valueHTML(v)
@@ -66,12 +75,14 @@ public struct JSONTreeRenderer {
         count: Int,
         kind: String,
         key: String?,
+        path: [PathSegment],
         into out: inout String,
         renderChildren: (inout String) -> Void
     ) {
+        let pathAttrs = pathAttributes(path)
         // Empty containers don't get a chevron — there's nothing to expand.
         if count == 0 {
-            out += #"<div class="json-line">"#
+            out += #"<div class="json-line"\#(pathAttrs)>"#
             out += #"<span class="json-toggle-spacer"></span>"#
             if let key { out += keyHTML(key) }
             out += "<span class=\"json-bracket\">\(open)\(close)</span>"
@@ -84,7 +95,7 @@ public struct JSONTreeRenderer {
         // the structure exists.
         if count > maxFullyMaterializedSize {
             out += #"<div class="json-node json-node-stub" data-kind="\#(kind)">"#
-            out += #"<div class="json-line">"#
+            out += #"<div class="json-line"\#(pathAttrs)>"#
             out += #"<span class="json-toggle-spacer"></span>"#
             if let key { out += keyHTML(key) }
             out += "<span class=\"json-bracket\">\(open)</span>"
@@ -104,7 +115,7 @@ public struct JSONTreeRenderer {
 
         out += #"<div class="\#(classes)" data-kind="\#(kind)">"#
         // header line — expanded form
-        out += #"<div class="json-line">"#
+        out += #"<div class="json-line"\#(pathAttrs)>"#
         out += #"<span class="json-toggle" data-toggle>▾</span>"#
         if let key { out += keyHTML(key) }
         out += "<span class=\"json-bracket json-bracket-open\">\(open)</span>"
@@ -132,13 +143,13 @@ public struct JSONTreeRenderer {
         out += "</div>"
     }
 
-    private static func renderChildLine(key: String?, value: JSONValue, isLast: Bool, into out: inout String) {
+    private static func renderChildLine(key: String?, value: JSONValue, path: [PathSegment], isLast: Bool, into out: inout String) {
         switch value {
         case .object, .array:
-            // Nested container — recurse, key passed in.
-            renderValue(value, key: key, into: &out)
+            // Nested container — recurse, key + path passed in.
+            renderValue(value, key: key, path: path, into: &out)
         default:
-            out += #"<div class="json-line">"#
+            out += #"<div class="json-line"\#(pathAttributes(path))>"#
             out += #"<span class="json-toggle-spacer"></span>"#
             if let key { out += keyHTML(key) }
             out += valueHTML(value)
@@ -188,6 +199,72 @@ public struct JSONTreeRenderer {
         return String(d)
     }
 
+    // MARK: - Path encoding (key-path copy, rview-cvx)
+
+    /// Dotted form: `foo.bar[0]`. Keys that aren't valid JS-identifier-ish
+    /// tokens get the bracket-string form `["weird key"]`.
+    public static func dottedPath(_ segments: [PathSegment]) -> String {
+        var out = ""
+        for seg in segments {
+            switch seg {
+            case .key(let k):
+                if isSimpleIdentifier(k) {
+                    if !out.isEmpty { out += "." }
+                    out += k
+                } else {
+                    out += "[\"\(k.replacingOccurrences(of: "\"", with: "\\\""))\"]"
+                }
+            case .index(let i):
+                out += "[\(i)]"
+            }
+        }
+        return out
+    }
+
+    /// JSON-Pointer form (RFC 6901): `/foo/bar/0`. Keys escape `~`→`~0`
+    /// and `/`→`~1`. An empty segment list returns the empty string, meaning
+    /// "whole document" per the spec.
+    public static func jsonPointer(_ segments: [PathSegment]) -> String {
+        var out = ""
+        for seg in segments {
+            out += "/"
+            switch seg {
+            case .key(let k):
+                out += k
+                    .replacingOccurrences(of: "~", with: "~0")
+                    .replacingOccurrences(of: "/", with: "~1")
+            case .index(let i):
+                out += "\(i)"
+            }
+        }
+        return out
+    }
+
+    private static func isSimpleIdentifier(_ s: String) -> Bool {
+        guard let first = s.first else { return false }
+        if !(first.isLetter || first == "_") { return false }
+        for c in s.dropFirst() {
+            if !(c.isLetter || c.isNumber || c == "_") { return false }
+        }
+        return true
+    }
+
+    /// Emits `data-path="..." data-jsonpointer="..."` attributes including
+    /// the leading space. Empty (root) paths get no attribute pair — copying
+    /// "everything" isn't useful.
+    private static func pathAttributes(_ segments: [PathSegment]) -> String {
+        guard !segments.isEmpty else { return "" }
+        let dotted = attrEscape(dottedPath(segments))
+        let pointer = attrEscape(jsonPointer(segments))
+        return " data-path=\"\(dotted)\" data-jsonpointer=\"\(pointer)\""
+    }
+
+    private static func attrEscape(_ s: String) -> String {
+        s.replacingOccurrences(of: "&", with: "&amp;")
+         .replacingOccurrences(of: "\"", with: "&quot;")
+         .replacingOccurrences(of: "<", with: "&lt;")
+    }
+
     private static func escape(_ s: String) -> String {
         var out = ""
         out.reserveCapacity(s.count)
@@ -227,31 +304,74 @@ public struct JSONTreeRenderer {
         node.classList.remove('json-lazy');
       }
 
-      document.addEventListener('click', function(ev) {
-        var t = ev.target.closest('[data-toggle]');
-        if (!t) return;
-        var node = t.closest('.json-node');
-        if (!node) return;
-        var expanding = node.classList.contains('collapsed');
-        if (ev.altKey) {
-          var shouldCollapse = !node.classList.contains('collapsed');
-          // If we're about to expand the cascade, materialize lazy
-          // templates first so descendants can be toggled.
-          if (!shouldCollapse) materializeIfLazy(node);
-          node.classList.toggle('collapsed', shouldCollapse);
-          var walk = function(root) {
-            root.querySelectorAll(':scope > .json-children .json-node').forEach(function(n){
-              if (!shouldCollapse) materializeIfLazy(n);
-              n.classList.toggle('collapsed', shouldCollapse);
-              walk(n);
-            });
-          };
-          walk(node);
-        } else {
-          if (expanding) materializeIfLazy(node);
-          node.classList.toggle('collapsed');
+      function showToast(text) {
+        var t = document.getElementById('peek-toast');
+        if (!t) {
+          t = document.createElement('div');
+          t.id = 'peek-toast';
+          document.body.appendChild(t);
         }
-        ev.stopPropagation();
+        t.textContent = text;
+        t.classList.add('show');
+        if (t._h) clearTimeout(t._h);
+        t._h = setTimeout(function(){ t.classList.remove('show'); }, 1400);
+      }
+
+      function copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text);
+          return;
+        }
+        // Fallback for restricted contexts.
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        ta.remove();
+      }
+
+      document.addEventListener('click', function(ev) {
+        // Chevron toggle (incl. Option+click cascade)
+        var t = ev.target.closest('[data-toggle]');
+        if (t) {
+          var node = t.closest('.json-node');
+          if (!node) return;
+          var expanding = node.classList.contains('collapsed');
+          if (ev.altKey) {
+            var shouldCollapse = !node.classList.contains('collapsed');
+            if (!shouldCollapse) materializeIfLazy(node);
+            node.classList.toggle('collapsed', shouldCollapse);
+            var walk = function(root) {
+              root.querySelectorAll(':scope > .json-children .json-node').forEach(function(n){
+                if (!shouldCollapse) materializeIfLazy(n);
+                n.classList.toggle('collapsed', shouldCollapse);
+                walk(n);
+              });
+            };
+            walk(node);
+          } else {
+            if (expanding) materializeIfLazy(node);
+            node.classList.toggle('collapsed');
+          }
+          ev.stopPropagation();
+          return;
+        }
+        // Key-path copy: click on a .json-key copies the path of its line.
+        // Option+click copies the JSON-pointer form instead of dotted.
+        var keyEl = ev.target.closest('.json-key');
+        if (keyEl) {
+          var line = keyEl.closest('.json-line');
+          if (!line) return;
+          var path = ev.altKey ? line.getAttribute('data-jsonpointer')
+                               : line.getAttribute('data-path');
+          if (!path) return;
+          copyToClipboard(path);
+          showToast('Copied ' + path);
+          ev.stopPropagation();
+        }
       });
     })();
     </script>
