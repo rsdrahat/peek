@@ -11,7 +11,8 @@ final class JSONDocumentTests: XCTestCase {
         XCTAssertTrue(html.contains("peek-data-badge"))
         XCTAssertTrue(html.contains("JSON"))
         XCTAssertTrue(html.contains("object with 1 keys"))
-        XCTAssertTrue(html.contains("peek-data-source"))
+        // The tree renderer materializes the parsed value below the summary.
+        XCTAssertTrue(html.contains("json-tree"))
     }
 
     func testParseErrorHTMLShowsLineColumn() {
