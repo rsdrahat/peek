@@ -151,6 +151,38 @@ final class AppDelegateTests: XCTestCase {
                        "Buffer must hold the URL even when openFile fires after didFinishLaunching")
     }
 
+    // MARK: - Modern openURLs callback (rview-w4q)
+    //
+    // macOS 13+ delivers file/folder args via `application(_:open: [URL])`.
+    // On macOS 26 (Tahoe / Darwin 25) the legacy openFile callback may not
+    // fire at all when the modern one is present, which silently dropped
+    // folder args. handleOpenURL must populate the same buffer that openFile
+    // does.
+
+    func testHandleOpenURLBuffersURLDirectly() {
+        let url = URL(fileURLWithPath: "/tmp/modern.md")
+        XCTAssertTrue(AppDelegate.handleOpenURL(url))
+        XCTAssertEqual(AppDelegate.pendingURL, url)
+        XCTAssertEqual(LaunchURLBuffer.shared.pendingURL, url)
+    }
+
+    func testHandleOpenURLPreservesNonFilePathQuirks() {
+        // Tilde-expansion and relative paths are the caller's job; the modern
+        // callback hands us already-resolved URLs from Launch Services. We
+        // store them as-is.
+        let url = URL(fileURLWithPath: "/Users/foo/bar baz/with spaces.md")
+        AppDelegate.handleOpenURL(url)
+        XCTAssertEqual(AppDelegate.pendingURL, url,
+                       "Modern callback must not normalize paths — Launch Services already did.")
+    }
+
+    func testHandleOpenURLForFolder() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        AppDelegate.handleOpenURL(dir)
+        XCTAssertEqual(AppDelegate.pendingURL, dir)
+    }
+
     func expectationInverted(for name: Notification.Name) -> XCTestExpectation {
         let e = expectation(forNotification: name, object: nil, handler: { _ in true })
         e.isInverted = true
