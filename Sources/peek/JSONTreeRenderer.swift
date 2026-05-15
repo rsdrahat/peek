@@ -304,6 +304,44 @@ public struct JSONTreeRenderer {
         node.classList.remove('json-lazy');
       }
 
+      // Search prep: materialize any lazy <template> whose content contains
+      // the query, and expand any collapsed ancestors that contain a match.
+      // After this runs, WKWebView's native find() can locate every hit.
+      window.peekJSONPrepareForSearch = function(query) {
+        if (!query) return;
+        if (!document.querySelector('.json-tree')) return;
+        var q = String(query).toLowerCase();
+        // Iterate — newly-materialized templates may themselves contain
+        // lazy templates with deeper matches.
+        var changed = true;
+        while (changed) {
+          changed = false;
+          var tpls = document.querySelectorAll('template.json-deferred-children');
+          for (var i = 0; i < tpls.length; i++) {
+            var tpl = tpls[i];
+            var t = (tpl.content.textContent || '').toLowerCase();
+            if (t.indexOf(q) === -1) continue;
+            var node = tpl.parentNode;
+            var wrap = document.createElement('div');
+            wrap.className = 'json-children';
+            wrap.appendChild(tpl.content.cloneNode(true));
+            tpl.parentNode.insertBefore(wrap, tpl);
+            tpl.remove();
+            node.classList.remove('json-lazy');
+            node.classList.remove('collapsed');
+            changed = true;
+          }
+        }
+        // Now expand any non-lazy collapsed nodes whose subtree contains
+        // the query, so the match is visible after find() locates it.
+        document.querySelectorAll('.json-node.collapsed').forEach(function(node){
+          var t = (node.textContent || '').toLowerCase();
+          if (t.indexOf(q) !== -1) {
+            node.classList.remove('collapsed');
+          }
+        });
+      };
+
       function showToast(text) {
         var t = document.getElementById('peek-toast');
         if (!t) {

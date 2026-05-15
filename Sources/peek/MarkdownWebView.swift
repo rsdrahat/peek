@@ -94,8 +94,16 @@ struct MarkdownWebView: NSViewRepresentable {
         config.backwards = request.backwards
         config.caseSensitive = false
         config.wraps = true
-        view.find(request.query, configuration: config) { result in
-            onFindResult(result.matchFound)
+        // JSON tree view defers content into <template> elements. WKFind
+        // can't see inside templates, so we ask the page to materialize
+        // any whose textContent contains the query before searching. The
+        // function no-ops on non-JSON pages.
+        let payload = Self.jsStringLiteral(request.query)
+        let prep = "if (typeof peekJSONPrepareForSearch === 'function') peekJSONPrepareForSearch(\(payload));"
+        view.evaluateJavaScript(prep) { _, _ in
+            view.find(request.query, configuration: config) { result in
+                onFindResult(result.matchFound)
+            }
         }
     }
 
