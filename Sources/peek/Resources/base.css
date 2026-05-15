@@ -140,6 +140,47 @@ input[type="checkbox"] { accent-color: var(--accent); margin-right: 0.4em; }
   padding: 0.05em 0.4em;
 }
 
+/* Data viewers (v0.5): JSON, JSONL, etc. */
+.peek-data-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.65em;
+  padding: 0.6em 0.9em;
+  margin: 0 0 1em 0;
+  background: var(--code-bg);
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.9em;
+  color: var(--muted);
+}
+.peek-data-badge {
+  font-family: var(--mono);
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--accent);
+  color: var(--bg);
+  padding: 0.18em 0.55em;
+  border-radius: 4px;
+}
+.peek-data-summary-text { color: var(--fg); }
+.peek-data-source {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+.peek-error-context {
+  text-align: left;
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.85em;
+  margin-top: 1em;
+  padding: 0.6em 0.9em;
+  background: var(--code-bg);
+  border-radius: 6px;
+}
+
 /* hljs theme override: gate by data-theme so we can ship both. */
 :root[data-theme="light"] .hljs-wrapper-light { display: block; }
 :root[data-theme="light"] .hljs-wrapper-dark { display: none; }
